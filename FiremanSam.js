@@ -68,23 +68,23 @@ DB.connection.once("open", async () => {
 
     const client = new Client({
         intents: [
-          GatewayIntentBits.Guilds,
-          GatewayIntentBits.GuildModeration,
-          GatewayIntentBits.GuildIntegrations,
-          GatewayIntentBits.GuildMessages,
-          GatewayIntentBits.GuildMessageReactions,
-          GatewayIntentBits.GuildMessageTyping,
-          GatewayIntentBits.GuildVoiceStates,
-          GatewayIntentBits.GuildPresences,
-          GatewayIntentBits.GuildScheduledEvents,
-          GatewayIntentBits.GuildEmojisAndStickers,
-          GatewayIntentBits.GuildInvites,
-          GatewayIntentBits.GuildMembers,
-          GatewayIntentBits.GuildWebhooks,
-          GatewayIntentBits.DirectMessages,
-          GatewayIntentBits.DirectMessageReactions,
-          GatewayIntentBits.DirectMessageTyping,
-          GatewayIntentBits.MessageContent
+            GatewayIntentBits.Guilds,
+            GatewayIntentBits.GuildModeration,
+            GatewayIntentBits.GuildIntegrations,
+            GatewayIntentBits.GuildMessages,
+            GatewayIntentBits.GuildMessageReactions,
+            GatewayIntentBits.GuildMessageTyping,
+            GatewayIntentBits.GuildVoiceStates,
+            GatewayIntentBits.GuildPresences,
+            GatewayIntentBits.GuildScheduledEvents,
+            GatewayIntentBits.GuildEmojisAndStickers,
+            GatewayIntentBits.GuildInvites,
+            GatewayIntentBits.GuildMembers,
+            GatewayIntentBits.GuildWebhooks,
+            GatewayIntentBits.DirectMessages,
+            GatewayIntentBits.DirectMessageReactions,
+            GatewayIntentBits.DirectMessageTyping,
+            GatewayIntentBits.MessageContent
         ]
     });
 
@@ -107,12 +107,12 @@ DB.connection.once("open", async () => {
 
     //console.error(`EVENTS: ${util.inspect(Object.keys(BotEvents).length, true, null, true)}`);
     for (const ev in BotEvents) {
-      //console.error(`HERE: ${util.inspect(BotEvents[ev], true, null, true)}`);
-      if (BotEvents[ev].once) {
-        client.once(BotEvents[ev].name, (...args) => BotEvents[ev].execute(client, ...args));
-      } else {
-        client.on(BotEvents[ev].name, (...args) => BotEvents[ev].execute(client, ...args));
-      }
+        //console.error(`HERE: ${util.inspect(BotEvents[ev], true, null, true)}`);
+        if (BotEvents[ev].once) {
+            client.once(BotEvents[ev].name, (...args) => BotEvents[ev].execute(client, ...args));
+        } else {
+            client.on(BotEvents[ev].name, (...args) => BotEvents[ev].execute(client, ...args));
+        }
     }
 
 
@@ -121,7 +121,7 @@ DB.connection.once("open", async () => {
 
 
 
-    client.on('messageCreate', (msg) => {
+    client.on("messageCreate", (msg) => {
         if(msg.channelId === Config.discord.channel_id && !msg.author.bot) {
             console.log("text: ", util.inspect(msg.cleanContent, true, null, true));
         }
