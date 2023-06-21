@@ -24,13 +24,13 @@
     "html-entities": "^2.3.3",
     "isomorphic-unfetch": "^4.0.2",
     "minimist": "^1.2.7",
-    "mongoose": "^6.7.2",
+    "mongoose": "^7.3.0",
     "mongoose-autopopulate": "^1.0.0",
     "numeral": "^2.0.6"
   },
   "devDependencies": {
     "eslint": "^8.32.0",
-    "eslint-plugin-jsdoc": "^39.8.0",
+    "eslint-plugin-jsdoc": "^46.2.6",
     "nodemon": "^2.0.22"
   }
 
