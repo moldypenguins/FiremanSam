@@ -13,10 +13,10 @@
 ![Open Issues](https://img.shields.io/github/issues-raw/moldypenguins/FiremanSam?style=for-the-badge&logo=GitHub)
 ![Open Pull Requests](https://img.shields.io/github/issues-pr-raw/moldypenguins/FiremanSam?style=for-the-badge&logo=GitHub)
 ![Snyk Vulnerabilities](https://img.shields.io/snyk/vulnerabilities/github/moldypenguins/FiremanSam?style=for-the-badge&logo=Snyk)  
-![Dependabot](https://img.shields.io/static/v1?style=for-the-badge&label=Dependabot&message=enabled&color=33CC11&logo=Dependabot)
+![CodeFactor Grade](https://img.shields.io/codefactor/grade/github/moldypenguins/FiremanSam?style=for-the-badge&label=Code%20Grade&logo=CodeFactor)
 ![CodeQL](https://img.shields.io/github/actions/workflow/status/moldypenguins/FiremanSam/codeql.yml?label=CodeQL&logo=github&style=for-the-badge)
 ![ESLint](https://img.shields.io/github/actions/workflow/status/moldypenguins/FiremanSam/eslint.yml?label=ESLint&logo=eslint&style=for-the-badge)  
-![CodeFactor Grade](https://img.shields.io/codefactor/grade/github/moldypenguins/FiremanSam?style=for-the-badge&label=Code%20Grade&logo=CodeFactor)
+![Dependabot](https://img.shields.io/static/v1?style=for-the-badge&label=Dependabot&message=enabled&color=33CC11&logo=Dependabot)
 ***  
 
 ## Table of Contents
