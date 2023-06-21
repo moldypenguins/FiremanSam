@@ -1,0 +1,37 @@
+{
+  "name": "firemansam",
+  "description": "The Dumpster Fire",
+  "keywords": [],
+  "private": true,
+  "license": "GPL-3.0",
+  "version": "1.0.0-alpha",
+  "repository": "github:moldypenguins/FiremanSam",
+  "funding": "https://www.buymeacoffee.com/moldypenguins",
+  "author": "Craig Roberts <craig.roberts@crdevel.com>",
+  "type": "module",
+  "engines": {
+    "node": ">=18.12.1",
+    "npm": ">=9.5.0"
+  },
+  "exports": "./FiremanSam.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@discordjs/opus": "^0.9.0",
+    "dayjs": "^1.11.6",
+    "discord.js": "^14.6.0",
+    "html-entities": "^2.3.3",
+    "isomorphic-unfetch": "^4.0.2",
+    "minimist": "^1.2.7",
+    "mongoose": "^6.7.2",
+    "mongoose-autopopulate": "^1.0.0",
+    "numeral": "^2.0.6"
+  },
+  "devDependencies": {
+    "eslint": "^8.32.0",
+    "eslint-plugin-jsdoc": "^39.8.0",
+    "nodemon": "^2.0.22"
+  }
+
+}
