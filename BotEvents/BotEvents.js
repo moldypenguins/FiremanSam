@@ -21,15 +21,14 @@
  * @summary bot events
  **/
 
-import ClientReady from "./ClientReady.js";
+
 import GuildAuditLogEntryCreate from "./GuildAuditLogEntryCreate.js";
 import GuildCreate from "./GuildCreate.js";
 
 let BotEvents = {
-  ClientReady,
   GuildAuditLogEntryCreate,
   GuildCreate
 };
 
-export default BotEvents
+export default BotEvents;
 

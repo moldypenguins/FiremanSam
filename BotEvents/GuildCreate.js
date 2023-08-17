@@ -1,13 +1,13 @@
-'use strict';
+"use strict";
 
 import Config from "../config.js";
-import { DB, Guild } from '../db.js';
+import { DB, Guild } from "../db.js";
 import { ActivityType, Events } from "discord.js";
 
 export default {
-	name: Events.GuildCreate,
-	once: false,
-	async execute(client, guild) {
+  name: Events.GuildCreate,
+  once: false,
+  async execute(client, guild) {
     console.log(`Discord: Joined guild ${guild.name} (${guild.id})!`);
 
     let res = await Guild.create({
@@ -20,5 +20,5 @@ export default {
     
     //admin logging
     client.channels.cache.get(Config.discord.channel_id).send(`GuildCreate: joined guild ${guild.name} (${guild.id}).`);
-	},
+  },
 };

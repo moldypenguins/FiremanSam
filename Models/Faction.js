@@ -1,7 +1,7 @@
 "use strict";
 /**
- * Circuit
- * Copyright (c) 2023 Craig Roberts
+ * Gandalf
+ * Copyright (c) 2020 Gandalf Planetarion Tools
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,22 +16,24 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see https://www.gnu.org/licenses/gpl-3.0.html
  *
- * @name BotCommands.js
- * @version 2023-04-20
- * @summary bot commands
+ * @name Faction.js
+ * @version 2023/07/22
+ * @summary Mongoose Model
  **/
 
 
-import allied from "./allied.js";
-import faction from "./faction.js";
-import withdrawl from "./withdrawl.js";
+import mongoose from "mongoose";
 
+let FactionSchema = new mongoose.Schema({
+  _id:           {type:mongoose.Schema.Types.ObjectId, required:true},
+  faction_id:         {type:Number, unique:true, required:true},
+  faction_name:  {type:String, required:true},
+  faction_tag: String,
+  faction_tag_image: String,
+  faction_respect: Number,
+  faction_age: Number,
+  faction_capacity: Number,
+  faction_best_chain: Number
+});
 
-let BotCommands = {
-  allied,
-  faction,
-  withdrawl
-};
-
-export default BotCommands;
-
+export default mongoose.model("Faction", FactionSchema, "Factions");
