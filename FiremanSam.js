@@ -23,17 +23,21 @@
 
 
 
+import util from "util";
+
 import Config from "./config.js";
 import { DB, Faction, FactionMember, OrganizedCrime, Application } from "./db.js";
-import { ToadScheduler, SimpleIntervalJob, AsyncTask } from "toad-scheduler";
-import minimist from "minimist";
-import util from "util";
 
 import { TornAPI } from "ts-torn-api";
 
+import { ActivityType, Client, Collection, Events, GatewayIntentBits, Routes, REST, Guild, roleMention } from "discord.js";
 import BotCommands from "./BotCommands/BotCommands.js";
 import BotEvents from "./BotEvents/BotEvents.js";
 
+import { ToadScheduler, SimpleIntervalJob, AsyncTask } from "toad-scheduler";
+let Scheduler = new ToadScheduler();
+
+import minimist from "minimist";
 let argv = minimist(process.argv.slice(2), {
   string: [],
   boolean: ["register"],
@@ -42,23 +46,16 @@ let argv = minimist(process.argv.slice(2), {
   unknown: false
 });
 
-
-import { ActivityType, Client, Collection, Events, GatewayIntentBits, Routes, REST, Guild, roleMention } from "discord.js";
-
-
-
-//register discord commands
+//register bot commands
 if(argv.register) {
   const rest = new REST().setToken(Config.discord.token);
   (async () => {
     try {
-      const dsCommands = [];
-      Config.discord.commands.forEach(function(name) {
-        if(BotCommands[name]) {
-          dsCommands.push(BotCommands[name].data.toJSON());
-        }
-      });
-      const data = await rest.put(Routes.applicationCommands(Config.discord.client_id), {body: dsCommands});
+      const botCommands = [];
+      for (let [key, value] of Object.entries(BotCommands)) {
+        botCommands.push(value.data.toJSON());
+      }
+      const data = await rest.put(Routes.applicationCommands(Config.discord.client_id), {body: botCommands});
       console.log(`Reloaded ${data.length} discord commands.`);
     } catch (err) {
       console.error(err);
@@ -66,10 +63,11 @@ if(argv.register) {
   })();
 }
 
-// connect to database
+
+//connect to database
 DB.connection.once("open", async () => {
 
-  const client = new FiremanSamClient({
+  const client = new Client({
     intents: [
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildModeration,
@@ -88,36 +86,31 @@ DB.connection.once("open", async () => {
       GatewayIntentBits.DirectMessageReactions,
       GatewayIntentBits.DirectMessageTyping,
       GatewayIntentBits.MessageContent
-    ],
-    torn_api_key: Config.torn.api_keys[Math.floor(Math.random()*Config.torn.api_keys.length)]
+    ]
   });
-
-
-
-
-
 
   //*************************************************************************************************************
   // HourJob/HourTask
   //*************************************************************************************************************
-  //TODO: rename HourJob/HourTask
   let hour_task = new AsyncTask("HourTask", async() => {
-    //console.log("HourJob running HourTask");
+  //console.log("HourJob running HourTask");
     let torn = new TornAPI(Config.torn.api_keys[Math.floor(Math.random()*Config.torn.api_keys.length)]);
 
     //console.log("FACTION JOB RUNNING");
-    UpdateFaction(Config.torn.faction);
+    for(let f = 0; f < Config.torn.faction.length; f++) {
+      Faction.api_update(Config.torn.faction[f]);
+    }
     for(let a = 0; a < Config.torn.allied.length; a++) {
-      UpdateFaction(Config.torn.allied[a]);
+      Faction.api_update(Config.torn.allied[a]);
     }
 
-    //console.log("API JOB RUNNING");
-    //let fac = await Faction.findOne({faction_id: Config.torn.faction});
+    //faction organized crimes
+    /*
     const ocs = (await torn.faction.crimes()).filter(oc => oc.initiated == 0 && oc.time_left == 0);
     if(ocs.length > 0) {
       for(let oc = 0; oc < ocs.length; oc++) {
         if(!await OrganizedCrime.exists({oc_id: ocs[oc].id})) {
-          //console.log(`OC: ${util.inspect(ocs[oc], true, null, true)}`);
+        //console.log(`OC: ${util.inspect(ocs[oc], true, null, true)}`);
           let crime = new OrganizedCrime({
             _id: new DB.Types.ObjectId(),
             oc_id: ocs[oc].id,
@@ -127,7 +120,7 @@ DB.connection.once("open", async () => {
 
           let ppants = [];
           for(let p = 0; p < ocs[oc].participants.length; p++) {
-            //console.log(`MEM: ${util.inspect(fac.members, true, null, true)}`);
+          //console.log(`MEM: ${util.inspect(fac.members, true, null, true)}`);
             let mem = await FactionMember.findOne({factionmember_id: ocs[oc].participants[p].id});
             if(mem != null) {
               let ppant = `:${ocs[oc].participants[p].color}_circle: **${mem.factionmember_name} [${mem.factionmember_id}]** - ${ocs[oc].participants[p].state}`;
@@ -153,22 +146,27 @@ DB.connection.once("open", async () => {
       }
 
     }
+    */
 
+
+
+    
     return;
   });
 
-  
 
   //*************************************************************************************************************
   // MinuteJob/MinuteTask
   //*************************************************************************************************************
   let minute_task = new AsyncTask("MinuteTask", async() => {
-    //console.log("MinuteJob running MinuteTask");
+  //console.log("MinuteJob running MinuteTask");
     let torn = new TornAPI(Config.torn.api_keys[Math.floor(Math.random()*Config.torn.api_keys.length)]);
 
+    //faction applications
+    /*
     const apps = (await torn.faction.applications()).filter(app => app.status == "active");
     if(apps.length > 0) {
-      //console.log(`APPS: ${util.inspect(apps, true, null, true)}`);
+    //console.log(`APPS: ${util.inspect(apps, true, null, true)}`);
       for(let app = 0; app < apps.length; app++) {
         let uApp;
         if(!await Application.exists({application_userid: apps[app].userID})) {
@@ -192,6 +190,7 @@ DB.connection.once("open", async () => {
         if(uApp != null)
         {
           console.log(`APP: ${util.inspect(uApp, true, null, true)}`);
+          
           if(!uApp.messageid) {
             let embed = {
               color: 0xFF0000,
@@ -204,51 +203,34 @@ DB.connection.once("open", async () => {
             };
             let mess = client.channels.cache.get(Config.torn.oc.channel_id).send({ content: `${roleMention(Config.torn.oc.role_id)} ORGANIZED CRIME READY`, embeds: [embed] });
             console.log(`MESS: ${util.inspect(mess, true, null, true)}`);
-            //uApp.messageid = mess.id;
+          //uApp.messageid = mess.id;
           }
+          
         }
-
+        
 
       }
+      
     }
+    */
+
+
 
     return;
   });
-
 
 
   //*************************************************************************************************************
   // DBJob/DBTask
   //*************************************************************************************************************
   let db_task = new AsyncTask("DBTask", async() => {
-    //console.log("DBJob running DBTask");
+  //console.log("DBJob running DBTask");
 
 
 
 
     return;
   });
-
-
-
-
-
-
-  const hour_job = new SimpleIntervalJob(
-    { hours: Config.torn.timers.hour, runImmediately: true },
-    hour_task,
-    { id: "HourJob" }
-  );
-  const minute_job = new SimpleIntervalJob(
-    { minutes: Config.torn.timers.minute, runImmediately: true },
-    minute_task,
-    { id: "MinuteJob", preventOverrun: true }
-  );
-  const db_job = new SimpleIntervalJob(
-    { minutes: Config.torn.timers.database, runImmediately: true },
-    db_task,
-    { id: "DBJob", preventOverrun: true }
-  );
   
 
 
@@ -272,7 +254,7 @@ DB.connection.once("open", async () => {
   client.commands = dsCommands;
 
 
-  //console.error(`EVENTS: ${util.inspect(Object.keys(BotEvents).length, true, null, true)}`);
+  //handle discord events
   for (const ev in BotEvents) {
     //console.error(`HERE: ${util.inspect(BotEvents[ev], true, null, true)}`);
     if (BotEvents[ev].once) {
@@ -281,11 +263,6 @@ DB.connection.once("open", async () => {
       client.on(BotEvents[ev].name, (...args) => BotEvents[ev].execute(client, ...args));
     }
   }
-
-
-
-
-
 
 
   client.on("messageCreate", (msg) => {
@@ -320,9 +297,21 @@ DB.connection.once("open", async () => {
     console.log(`Discord: Logged in as ${client.user.username}!`);
     client.user.setActivity("your mother undress", { type: ActivityType.Watching });
     //client.channels.cache.get(Config.discord.channel_id).send(`${client.user.username} reporting for duty!`);
-    client.Scheduler.addSimpleIntervalJob(hour_job);
-    client.Scheduler.addSimpleIntervalJob(minute_job);
-    client.Scheduler.addSimpleIntervalJob(db_job);
+    Scheduler.addSimpleIntervalJob(new SimpleIntervalJob(
+      { hours: Config.torn.timers.hour, runImmediately: true },
+      hour_task,
+      { id: "HourJob" }
+    ));
+    Scheduler.addSimpleIntervalJob(new SimpleIntervalJob(
+      { minutes: Config.torn.timers.minute, runImmediately: true },
+      minute_task,
+      { id: "MinuteJob", preventOverrun: true }
+    ));
+    Scheduler.addSimpleIntervalJob(new SimpleIntervalJob(
+      { minutes: Config.torn.timers.database, runImmediately: true },
+      db_task,
+      { id: "DBJob", preventOverrun: true }
+    ));
   });
 
   // *******************************************************************************************************************
@@ -332,75 +321,3 @@ DB.connection.once("open", async () => {
   await client.login(Config.discord.token);
 
 });
-
-
-class FiremanSamClient extends Client
-{
-  /**
-	 * Options for a FiremanSamClient
-	 * @typedef {ClientOptions} FiremanSamClientOptions
-	 * @property {string} [torn_api_key]
-	 */
-
-  /**
-	 * @param {FiremanSamClientOptions} [options] - Options for the client
-	 */
-  constructor(options = {}) {
-    if(typeof options.torn_api_key === "undefined") { throw new Error("Error"); }
-    super(options);
-
-    /**
-		 * The client's torn api
-		 * @type {TornAPI}
-		 */
-    this.Torn = new TornAPI(this.options.torn_api_key);
-
-    this.Scheduler = new ToadScheduler();
-  }
-
-  
-
-
-}
-
-
-const UpdateFaction = async(faction_id) => {
-  let torn = new TornAPI(Config.torn.api_keys[Math.floor(Math.random()*Config.torn.api_keys.length)]);
-  let faction = await torn.faction.faction(faction_id);
-  //console.log(`FAC: ${util.inspect(faction, true, null, true)}`);
-  if(faction != null) {
-    let fac;
-    if(!(await Faction.exists({faction_id: faction.ID}))) {
-      fac = new Faction({
-        _id: new DB.Types.ObjectId(),
-        faction_id: faction.ID,
-        faction_name: faction.name,
-        faction_tag: faction.tag,
-        faction_tag_image: faction.tag_image,
-        faction_respect: faction.respect,
-        faction_age: faction.age,
-        faction_capacity: faction.capacity,
-        faction_best_chain: faction.best_chain
-      });
-      await fac.save();
-    } else {
-      fac = await Faction.findOne({faction_id: faction.ID});
-    }
-    //update faction members
-    for(let m = 0; m < faction.members.length; m++) {
-      if(!(await FactionMember.exists({factionmember_id: faction.members[m].id}))) {
-        let facmem = new FactionMember({
-          _id: new DB.Types.ObjectId(),
-          factionmember_id: faction.members[m].id,
-          factionmember_name: faction.members[m].name,
-
-          factionmember_level: faction.members[m].level,
-          factionmember_days_in_faction: faction.members[m].days_in_faction,
-          factionmember_position: faction.members[m].position,
-          factionmember_faction: fac
-        });
-        await facmem.save();
-      }
-    }
-  }
-};

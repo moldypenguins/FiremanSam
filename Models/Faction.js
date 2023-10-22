@@ -21,11 +21,12 @@
  * @summary Mongoose Model
  **/
 
+import Config from "../config.js";
+import { DB, Faction, FactionMember } from "../db.js";
+import { TornAPI } from "ts-torn-api";
 
-import mongoose from "mongoose";
-
-let FactionSchema = new mongoose.Schema({
-  _id:           {type:mongoose.Schema.Types.ObjectId, required:true},
+let FactionSchema = new DB.Schema({
+  _id:           {type:DB.Schema.Types.ObjectId, required:true},
   faction_id:         {type:Number, unique:true, required:true},
   faction_name:  {type:String, required:true},
   faction_tag: String,
@@ -36,4 +37,47 @@ let FactionSchema = new mongoose.Schema({
   faction_best_chain: Number
 });
 
-export default mongoose.model("Faction", FactionSchema, "Factions");
+
+FactionSchema.statics.api_update = async(faction_id) => {
+  let torn = new TornAPI(Config.torn.api_keys[Math.floor(Math.random()*Config.torn.api_keys.length)]);
+  let faction = await torn.faction.faction(faction_id);
+  //console.log(`FAC: ${util.inspect(faction, true, null, true)}`);
+  if(faction != null) {
+    let fac;
+    if(!(await Faction.exists({faction_id: faction.ID}))) {
+      fac = new Faction({
+        _id: new DB.Types.ObjectId(),
+        faction_id: faction.ID,
+        faction_name: faction.name,
+        faction_tag: faction.tag,
+        faction_tag_image: faction.tag_image,
+        faction_respect: faction.respect,
+        faction_age: faction.age,
+        faction_capacity: faction.capacity,
+        faction_best_chain: faction.best_chain
+      });
+      await fac.save();
+    } else {
+      fac = await Faction.findOne({faction_id: faction.ID});
+    }
+    //update faction members
+    for(let m = 0; m < faction.members.length; m++) {
+      if(!(await FactionMember.exists({factionmember_id: faction.members[m].id}))) {
+        let facmem = new FactionMember({
+          _id: new DB.Types.ObjectId(),
+          factionmember_id: faction.members[m].id,
+          factionmember_name: faction.members[m].name,
+
+          factionmember_level: faction.members[m].level,
+          factionmember_days_in_faction: faction.members[m].days_in_faction,
+          factionmember_position: faction.members[m].position,
+          factionmember_faction: fac
+        });
+        await facmem.save();
+      }
+    }
+  }
+};
+
+
+export default DB.model("Faction", FactionSchema, "Factions");

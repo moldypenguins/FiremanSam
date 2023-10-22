@@ -31,14 +31,31 @@ import { encode } from "html-entities";
 import numeral from "numeral";
 import dayjs from "dayjs";
 
+
+let _factions = await Faction.find();
+
+
 export default {
   data: new SlashCommandBuilder()
     .setName("faction")
-    .setDescription("Display faction info.")
     .setDMPermission(false)
-    .setDefaultMemberPermissions(PermissionFlagsBits.SendMessages),
+    .setDefaultMemberPermissions(PermissionFlagsBits.SendMessages)
+    .addSubcommand(subcommand => subcommand
+      .setName("info")
+      .setDescription("Display faction info.")
+      .addStringOption(option => option
+        .setName("faction")
+        .setRequired(true)
+        .addChoices(
+          { name: "Dumpster Fire", value: "48912" },
+          { name: "DF Fight Club", value: "50700" }
+        )
+      )
+    ),
   async execute(client, interaction) {
-    let fac = await Faction.findOne({faction_id: Config.torn.faction});
+    
+    let _faction = interaction.options.getString("faction");
+    let fac = await Faction.findOne({faction_id: _faction.faction_id});
     if(fac != null) {
       let embed = {
         color: 0xCC6600,
