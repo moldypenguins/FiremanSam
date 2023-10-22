@@ -21,6 +21,7 @@
  * @summary Mongoose Model
  **/
 
+import util from "util";
 import Config from "../config.js";
 import { DB, Faction, FactionMember } from "../db.js";
 import { TornAPI } from "ts-torn-api";
@@ -34,33 +35,41 @@ let FactionSchema = new DB.Schema({
   faction_respect: Number,
   faction_age: Number,
   faction_capacity: Number,
-  faction_best_chain: Number
+  faction_best_chain: Number,
+  faction_last_updated: Date,
+  faction_type: String,
+  faction_member_role: String,
+  faction_bank_channel: String,
+  faction_banker_role: String
 });
 
 
-FactionSchema.statics.api_update = async(faction_id) => {
+
+
+
+
+
+FactionSchema.statics.api_add = async(faction_id, faction_type) => {
   let torn = new TornAPI(Config.torn.api_keys[Math.floor(Math.random()*Config.torn.api_keys.length)]);
   let faction = await torn.faction.faction(faction_id);
   //console.log(`FAC: ${util.inspect(faction, true, null, true)}`);
   if(faction != null) {
-    let fac;
-    if(!(await Faction.exists({faction_id: faction.ID}))) {
-      fac = new Faction({
-        _id: new DB.Types.ObjectId(),
-        faction_id: faction.ID,
-        faction_name: faction.name,
-        faction_tag: faction.tag,
-        faction_tag_image: faction.tag_image,
-        faction_respect: faction.respect,
-        faction_age: faction.age,
-        faction_capacity: faction.capacity,
-        faction_best_chain: faction.best_chain
-      });
-      await fac.save();
-    } else {
-      fac = await Faction.findOne({faction_id: faction.ID});
-    }
-    //update faction members
+    let fac = new Faction({
+      _id: new DB.Types.ObjectId(),
+      faction_id: faction.ID,
+      faction_name: faction.name,
+      faction_tag: faction.tag,
+      faction_tag_image: faction.tag_image,
+      faction_respect: faction.respect,
+      faction_age: faction.age,
+      faction_capacity: faction.capacity,
+      faction_best_chain: faction.best_chain,
+      faction_last_updated: new Date(),
+      faction_type: faction_type
+    });
+    await fac.save();
+
+    //add faction members
     for(let m = 0; m < faction.members.length; m++) {
       if(!(await FactionMember.exists({factionmember_id: faction.members[m].id}))) {
         let facmem = new FactionMember({
@@ -76,6 +85,53 @@ FactionSchema.statics.api_update = async(faction_id) => {
         await facmem.save();
       }
     }
+    return fac;
+  } else {
+    return null;
+  }
+};
+
+
+FactionSchema.statics.api_update = async(faction_id) => {
+  let torn = new TornAPI(Config.torn.api_keys[Math.floor(Math.random()*Config.torn.api_keys.length)]);
+  let faction = await torn.faction.faction(faction_id);
+  //console.log(`FAC: ${util.inspect(faction, true, null, true)}`);
+  if(faction != null) {
+    let fac;
+    if(await Faction.exists({faction_id: faction.ID})) {
+      await Faction.updateOne({faction_id: faction.ID}, {
+        faction_name: faction.name,
+        faction_tag: faction.tag,
+        faction_tag_image: faction.tag_image,
+        faction_respect: faction.respect,
+        faction_age: faction.age,
+        faction_capacity: faction.capacity,
+        faction_best_chain: faction.best_chain,
+        faction_last_updated: new Date()
+      });
+
+      fac = await Faction.findOne({faction_id: faction.ID});
+    
+      //update faction members
+      for(let m = 0; m < faction.members.length; m++) {
+        if(!(await FactionMember.exists({factionmember_id: faction.members[m].id}))) {
+          let facmem = new FactionMember({
+            _id: new DB.Types.ObjectId(),
+            factionmember_id: faction.members[m].id,
+            factionmember_name: faction.members[m].name,
+
+            factionmember_level: faction.members[m].level,
+            factionmember_days_in_faction: faction.members[m].days_in_faction,
+            factionmember_position: faction.members[m].position,
+            factionmember_faction: fac
+          });
+          await facmem.save();
+        }
+      }
+    }
+    return true;
+  } else {
+    return false;
   }
 };
 

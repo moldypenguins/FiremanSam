@@ -23,30 +23,110 @@
 
 import util from "util";
 import Config from "../config.js";
-import { DB } from "../db.js";
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, roleMention, userMention } from "discord.js";
+import { DB, Faction } from "../db.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, TextInputBuilder, TextInputStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, roleMention, userMention } from "discord.js";
 
 import { TornAPI } from "ts-torn-api";
 import { encode } from "html-entities";
 import numeral from "numeral";
 import dayjs from "dayjs";
+import advancedFormat from "dayjs/plugin/advancedFormat.js";
+import utc from "dayjs/plugin/utc.js";
+import timezone from "dayjs/plugin/timezone.js";
+dayjs.extend(advancedFormat);
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export default {
   data: new SlashCommandBuilder()
     .setName("withdrawl")
     .setDescription("Create a new withdrawl request.")
-    .addStringOption(o => o.setName("amount").setDescription("Amount to withdrawl").setRequired(true))
-    .addStringOption(o => o.setName("online").setDescription("Verify online before send").setRequired(true).setChoices({name: "Yes", value: "Yes", default: true}, {name: "No", value: "No"}))
+    .addIntegerOption(o => o.setName("amount").setDescription("Amount to withdrawl").setRequired(true))
+    .addStringOption(o => o.setName("online").setDescription("Verify online before send").setRequired(true).setChoices({name: "No", value: "No", default: true}, {name: "Yes", value: "Yes"}))
     .setDMPermission(false)
     .setDefaultMemberPermissions(PermissionFlagsBits.SendMessages),
   async execute(client, interaction) {
-    let bankers = await interaction.guild.roles.cache.get(Config.torn.bank.role_id).members.map(m => m.user.id);
+    //console.log(`INTERACTION: ${util.inspect(interaction, true, 1, true)}`);
+  
+    if (interaction.isChatInputCommand()) {
+      let _amount = interaction.options.getInteger("amount");
+      let _online = interaction.options.getString("online");
+        
+      let iUser = await interaction.guild.members.fetch(interaction.user.id);
+      //console.log(`USER: ${util.inspect(iUser, true, 1, true)}`);
+  
+      let _faction = null;
+      let _factions = await Faction.find({faction_type: "faction"});
+      for(let _f = 0; _f < _factions.length; _f++) {
+        if(iUser._roles.includes(_factions[_f].faction_member_role)) {
+          _faction = _factions[_f];
+          break;
+        }
+      }
+      if(_faction) {
+        let thread = client.channels.cache.get(_faction.faction_bank_channel).threads.cache.find(t => t.name === `${iUser.nickname} - Withdrawl Request`);
+  
+        if(!thread) {
+          thread = await client.channels.cache.get(_faction.faction_bank_channel).threads.create({
+            name: `${iUser.nickname} - Withdrawl Request`,
+            autoArchiveDuration: 60,
+            type: ChannelType.PrivateThread,
+            reason: "Withdrawl Request",
+          });
+        }
     
-    if(interaction.isButton()) {
-      let command = interaction.customId.split("_")[1];
+        await thread.members.add(interaction.user.id);
+  
+        let embed = {
+          color: 0x0099FF,
+          title: thread.name,
+          author: { name: iUser.username },
+          fields: [
+            { name: "Amount", value: `$${numeral(_amount).format("0,0")}`, inline: true },
+            { name: "Verify Online", value: _online, inline: true }
+          ],
+          timestamp: new Date().toISOString(),
+        };
+        let row = {
+          "type": 1,
+          "components": [
+            {
+              "type": 2,
+              "label": "Claim",
+              "style": 1,
+              "custom_id": `withdrawl_${_faction.faction_id}_claim`
+            },
+            {
+              "type": 2,
+              "label": "Cancel",
+              "style": 4,
+              "custom_id": `withdrawl_${_faction.faction_id}_cancel`
+            }
+          ]
+        };
+  
+        let message = await thread.send({ content: `${roleMention(_faction.faction_banker_role)}`, embeds: [embed], components: [row] });
+  
+        interaction.reply({ content: "A bank teller will be with you shortly.", ephemeral: true });
+      }
+  
+  
+  
+  
+  
+  
+  
+    } else if(interaction.isButton()) {
+      let faction = interaction.customId.split("_")[1];
+      let command = interaction.customId.split("_")[2];
       let row = ActionRowBuilder.from(interaction.message.components[0]);
       let embed = EmbedBuilder.from(interaction.message.embeds[0]);
 
+      console.log(`USER: ${util.inspect(faction, true, 1, true)}`);
+  
+      let _faction = await Faction.findOne({faction_id: parseInt(faction)});
+      let bankers = await interaction.guild.roles.cache.get(_faction.faction_banker_role).members.map(m => m.user.id);
+  
       switch(command) {
       case "claim":
         if(bankers.includes(interaction.user.id)) {
@@ -57,19 +137,20 @@ export default {
                 "type": 2,
                 "label": "Refresh",
                 "style": 1,
-                "custom_id": "withdrawl_refresh"
+                "custom_id": `withdrawl_${_faction.faction_id}_refresh`
               },
               {
                 "type": 2,
                 "label": "Complete",
                 "style": 3,
-                "custom_id": "withdrawl_complete"
+                "custom_id": `withdrawl_${_faction.faction_id}_complete`
               }
             ]
           };
-
+          
+          let torn = new TornAPI(Config.torn.api_keys[Math.floor(Math.random()*Config.torn.api_keys.length)]);
           let uid = interaction.message.embeds[0].title.match(/\[\d+\]/)[0].replace(/[\[\]]/g, "");
-          const tUser = await client.Torn.user.user(uid);
+          const tUser = await torn.user.user(uid);
           // check for error
           if (TornAPI.isError(tUser)) {
             console.log(`${tUser.code}: ${tUser.error}`);
@@ -83,8 +164,9 @@ export default {
         break;
       case "refresh":
         if(bankers.includes(interaction.user.id)) {
+          let torn = new TornAPI(Config.torn.api_keys[Math.floor(Math.random()*Config.torn.api_keys.length)]);
           let uid = interaction.message.embeds[0].title.match(/\[\d+\]/)[0].replace(/[\[\]]/g, "");
-          const tUser = await client.Torn.user.user(uid);
+          const tUser = await torn.user.user(uid);
           // check for error
           if (TornAPI.isError(tUser)) {
             console.log(`${tUser.code}: ${tUser.error}`);
@@ -99,7 +181,7 @@ export default {
         row.components.find(c => c.data.label == "Claim").setDisabled(true);
         row.components.find(c => c.data.label == "Cancel").setDisabled(true);
         row.components.push(new ButtonBuilder()
-          .setCustomId("withdrawl_close")
+          .setCustomId(`withdrawl_${_faction.faction_id}_close`)
           .setLabel("Close")
           .setStyle(ButtonStyle.Danger)
         );
@@ -110,7 +192,7 @@ export default {
           row.components.find(c => c.data.label == "Complete").setDisabled(true);
           row.components.find(c => c.data.label == "Refresh").setDisabled(true);
           row.components.push(new ButtonBuilder()
-            .setCustomId("withdrawl_close")
+            .setCustomId(`withdrawl_${_faction.faction_id}_close`)
             .setLabel("Close")
             .setStyle(ButtonStyle.Danger)
           );
@@ -123,77 +205,8 @@ export default {
         }
         break;
       }
-
-      return interaction.deferUpdate();
-
-    }
-    else {
-
-      let _amount = interaction.options.getString("amount");
-      let _online = interaction.options.getString("online");
-      console.log(`Amount: ${_amount}`);
-      console.log(`Online: ${_online}`);
-
-
-      let iUser = await interaction.guild.members.fetch(interaction.user.id);
-
-
-      let thread = client.channels.cache.get(Config.torn.bank.channel_id).threads.cache.find(t => t.name === `${iUser.nickname} - Withdrawl Request`);
-
-      if(!thread) {
-        thread = await client.channels.cache.get(Config.torn.bank.channel_id).threads.create({
-          name: `${iUser.nickname} - Withdrawl Request`,
-          autoArchiveDuration: 60,
-          type: ChannelType.PrivateThread,
-          reason: "Withdrawl Request",
-        });
-      }
-
-      await thread.members.add(interaction.user.id);
-
-      //could loop through bankrs here but easier to just mention them in message
-      //await thread.members.add(Config.torn.bank.role_id);
       
-      console.log(`Created/updated thread: ${thread.name}`);
-
-      let embed = {
-        color: 0x0099FF,
-        title: thread.name,
-        author: { name: iUser.username },
-        fields: [
-          { name: "Amount", value: _amount, inline: true },
-          { name: "Verify Online", value: _online, inline: true }
-        ],
-        timestamp: new Date().toISOString(),
-      };
-
-
-      let row = {
-        "type": 1,
-        "components": [
-          {
-            "type": 2,
-            "label": "Claim",
-            "style": 1,
-            "custom_id": "withdrawl_claim"
-          },
-          {
-            "type": 2,
-            "label": "Cancel",
-            "style": 4,
-            "custom_id": "withdrawl_cancel"
-          }
-        ]
-      };
-
-
-      let message = await thread.send({ content: `${roleMention(Config.torn.bank.role_id)}`, embeds: [embed], components: [row] });
-      //let message = await thread.send({ content: "banker", embeds: [embed], components: [row] });
-
-      //TODO: add message id to a withdrawl request record in db
-
-
-      interaction.reply({ content: "A bank teller will be with you shortly.", ephemeral: true });
+      return interaction.deferUpdate();
     }
   }
 };

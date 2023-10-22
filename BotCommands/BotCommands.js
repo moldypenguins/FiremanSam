@@ -24,12 +24,14 @@
 
 //import allied from "./allied.js";
 //import faction from "./faction.js";
+import config from "./config.js";
 import withdrawl from "./withdrawl.js";
 
 
 let BotCommands = {
   //allied,
   //faction,
+  config,
   withdrawl
 };
 

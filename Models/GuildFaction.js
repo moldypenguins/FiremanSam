@@ -16,20 +16,21 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see https://www.gnu.org/licenses/gpl-3.0.html
  *
- * @name Guild.js
+ * @name GuildFaction.js
  * @version 2022/11/11
  * @summary Mongoose Model
  **/
 
 
 import mongoose from "mongoose";
+import mongooseAutoPopulate from "mongoose-autopopulate";
 
-let GuildSchema = new mongoose.Schema({
-  _id:               {type:mongoose.Schema.Types.ObjectId, required:true},
-  guild_id:          {type:String, unique:true, required:true},
-  guild_ownerId:     {type:String, required:true},
-  guild_name:        {type:String},
-  guild_description: {type:String},
+let GuildFactionSchema = new mongoose.Schema({
+  _id:        {type:mongoose.Schema.Types.ObjectId, required:true},
+  guild_id:   {type:mongoose.Schema.Types.ObjectId, ref:"Guild", autopopulate: true},
+  faction_id: {type:mongoose.Schema.Types.ObjectId, ref:"Faction", autopopulate: true}
 });
 
-export default mongoose.model("Guilds", GuildSchema, "Guilds");
+GuildFactionSchema.plugin(mongooseAutoPopulate);
+
+export default mongoose.model("GuildFactions", GuildFactionSchema, "GuildFaction");
