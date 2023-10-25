@@ -24,7 +24,7 @@
 import util from "util";
 import Config from "../config.js";
 import { DB, Faction, Guild } from "../db.js";
-import { ActionRowBuilder, PermissionFlagsBits, RoleSelectMenuBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, SlashCommandBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, roleMention, userMention } from "discord.js";
+import { ActionRowBuilder, PermissionFlagsBits, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, TextInputBuilder, TextInputStyle, ModalBuilder, SlashCommandBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, roleMention, channelMention, userMention } from "discord.js";
 
 import { TornAPI } from "ts-torn-api";
 import { encode } from "html-entities";
@@ -86,7 +86,8 @@ export default {
             title: _factions[_f].faction_name,
             fields: [
               { name: "", value: `**Member Role:** ${roleMention(_factions[_f].faction_member_role)}`, inline: false },
-              { name: "", value: `**Banker Role:** ${roleMention(_factions[_f].faction_banker_role)}`, inline: false }
+              { name: "", value: `**Banker Role:** ${roleMention(_factions[_f].faction_banker_role)}`, inline: false },
+              { name: "", value: `**Bank Channel:** ${channelMention(_factions[_f].faction_bank_channel)}`, inline: false }
             ]
           });
           _options.push(new StringSelectMenuOptionBuilder({label: `${_factions[_f].faction_name}`, value: `${_factions[_f].faction_id}`}));
@@ -140,7 +141,11 @@ export default {
             .setPlaceholder("alliance | faction")
             .setStyle(TextInputStyle.Short);
 
-          modal.addComponents(new ActionRowBuilder().addComponents(factionIdInput), new ActionRowBuilder().addComponents(factionTypeInput));
+
+          modal.addComponents(
+            new ActionRowBuilder().addComponents(factionIdInput), 
+            new ActionRowBuilder().addComponents(factionTypeInput)
+          );
 
           await interaction.showModal(modal);
 
@@ -152,7 +157,9 @@ export default {
           const banker_role_select = new RoleSelectMenuBuilder()
             .setCustomId(`config_faction_${_f.faction_id}_banker`)
             .setPlaceholder("Select a member role");
-
+          const bank_channel_select = new ChannelSelectMenuBuilder()
+            .setCustomId(`config_faction_${_f.faction_id}_bankchannel`)
+            .setPlaceholder("Select a channel");
         
 
           interaction.reply({ embeds: [{
@@ -160,11 +167,13 @@ export default {
             title: _f.faction_name,
             fields: [
               { name: "", value: `**Member Role:** ${roleMention(_f.faction_member_role)}`, inline: false },
-              { name: "", value: `**Banker Role:** ${roleMention(_f.faction_banker_role)}`, inline: false }
+              { name: "", value: `**Banker Role:** ${roleMention(_f.faction_banker_role)}`, inline: false },
+              { name: "", value: `**Banker Channel:** ${roleMention(_f.faction_bank_channel)}`, inline: false }
             ]
           }], components: [
             new ActionRowBuilder().addComponents(member_role_select), 
             new ActionRowBuilder().addComponents(banker_role_select),
+            new ActionRowBuilder().addComponents(bank_channel_select),
             {
               "type": 1,
               "components": [
@@ -211,13 +220,39 @@ export default {
             title: _f.faction_name,
             fields: [
               { name: "", value: `**Member Role:** ${roleMention(_f.faction_member_role)}`, inline: false },
-              { name: "", value: `**Banker Role:** ${roleMention(_f.faction_banker_role)}`, inline: false }
+              { name: "", value: `**Banker Role:** ${roleMention(_f.faction_banker_role)}`, inline: false },
+              { name: "", value: `**Bank Channel:** ${channelMention(_f.faction_bank_channel)}`, inline: false }
             ]
           }], ephemeral: false });
           return interaction.deferUpdate();
         }
       }
-      
+    } else if(interaction.isChannelSelectMenu()) {
+      console.log(`CUSTOMID: ${util.inspect(interaction.customId, true, 1, true)}`);
+      let _command = interaction.customId.split("_")[1];
+      let _faction = interaction.customId.split("_")[2];
+      let _field = interaction.customId.split("_")[3];
+
+      if(_command == "faction" && _faction && _field) {
+        let result = null;
+        if(_field == "bankchannel") {
+          result = await Faction.updateOne({faction_id: _faction}, {faction_bank_channel: `${interaction.values[0]}`});
+        }
+
+        if(result) {
+          let _f = await Faction.findOne({faction_id: _faction});
+          interaction.message.edit({ embeds: [{
+            color: 0x0099FF,
+            title: _f.faction_name,
+            fields: [
+              { name: "", value: `**Member Role:** ${roleMention(_f.faction_member_role)}`, inline: false },
+              { name: "", value: `**Banker Role:** ${roleMention(_f.faction_banker_role)}`, inline: false },
+              { name: "", value: `**Bank Channel:** ${channelMention(_f.faction_bank_channel)}`, inline: false }
+            ]
+          }], ephemeral: false });
+          return interaction.deferUpdate();
+        }
+      }
 
     } else if(interaction.isButton()) {
       //console.log(`INTERACTION: ${util.inspect(interaction, true, 1, true)}`);
@@ -256,7 +291,8 @@ export default {
             title: result.faction_name,
             fields: [
               { name: "", value: `**Member Role:** ${roleMention(result.faction_member_role)}`, inline: false },
-              { name: "", value: `**Banker Role:** ${roleMention(result.faction_banker_role)}`, inline: false }
+              { name: "", value: `**Banker Role:** ${roleMention(result.faction_banker_role)}`, inline: false },
+              { name: "", value: `**Bank Channel:** ${channelMention(result.faction_bank_channel)}`, inline: false }
             ]
           }], ephemeral: false });
           interaction.message.delete();

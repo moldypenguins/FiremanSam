@@ -272,7 +272,14 @@ DB.connection.once("open", async () => {
   });
 
   client.on(Events.InteractionCreate, async (interaction) => {
-    if(!interaction.isChatInputCommand() && !interaction.isButton() && !interaction.isStringSelectMenu() && !interaction.isRoleSelectMenu() && !interaction.isModalSubmit()) { return; }
+    if(
+      !interaction.isChatInputCommand() && 
+      !interaction.isButton() && 
+      !interaction.isStringSelectMenu() && 
+      !interaction.isChannelSelectMenu() && 
+      !interaction.isRoleSelectMenu() && 
+      !interaction.isModalSubmit()
+    ) { return; }
 
     //console.log(interaction);
 
