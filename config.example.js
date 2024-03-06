@@ -16,22 +16,22 @@
  * along with this program.  If not, see https://www.gnu.org/licenses/gpl-3.0.html
  *
  * @name config.example.js
- * @version 2023/01/20
+ * @version 2024/03/05
  * @summary example configuration file
  **/
 
 const Configuration = {
   discord: {
-    token: '',
-    client_id: '',
-    guild_id: ''
+    token: "",
+    client_id: "",
+    guild_id: ""
   },
   db: {
-    url: '127.0.0.1:27017',
-    name: '',
-    user: '',
-    pass: ''
+    url: "127.0.0.1:27017",
+    name: "",
+    user: "",
+    pass: ""
   }
 };
 
-export default Configuration
+export default Configuration;

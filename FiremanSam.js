@@ -30,6 +30,8 @@ import { DB, Faction, FactionMember, OrganizedCrime, Application } from "./db.js
 
 import { TornAPI } from "ts-torn-api";
 
+import { Context, Telegraf } from "telegraf";
+
 import { ActivityType, Client, Collection, Events, GatewayIntentBits, Routes, REST, Guild, roleMention } from "discord.js";
 import BotCommands from "./BotCommands/BotCommands.js";
 import BotEvents from "./BotEvents/BotEvents.js";
@@ -67,7 +69,52 @@ if(argv.register) {
 //connect to database
 DB.connection.once("open", async () => {
 
-  const client = new Client({
+  const telegramBot = new Telegraf(Config.telegram.token, { telegram: { agent: null, webhookReply: false }, username: Config.telegram.username });
+
+  telegramBot.use(async(ctx, next) => {
+    //console.log("CTX: ", util.inspect(ctx.message, true, null, true));
+    //check for unknown groups
+    if(ctx.message?.chat?.id && !ctx.message?.from?.is_bot && ctx.message.chat.type !== "private") {
+      //console.log(ctx.message);
+      discordBot.channels.cache.get(Config.discord.telegram_id).send(`${ctx.message.from.username}: ${ctx.message.text}`);
+    }
+  });
+
+  /*
+  telegramBot.context.mentions = {
+    get: async (message) => {
+      let mentions = [];
+      if(message.entities !== undefined) {
+        let eMentions = message.entities.filter(e => e.type === "mention");
+        for (let i = 0; i < eMentions.length; i++) {
+          //console.log(`EMENT: ${util.inspect(eMentions[i], true, null, true)}`);
+          let usrnm = message.text.slice(eMentions[i].offset, eMentions[i].offset + eMentions[i].length);
+          //console.log('usrnm: ' + util.inspect(usrnm, false, null, true));
+          mentions.push(eMentions[i]);
+        }
+        let etMentions = message.entities.filter(e => e.type === "text_mention");
+        for (let i = 0; i < etMentions.length; i++) {
+          mentions.push(etMentions[i]);
+        }
+      }
+      return mentions;
+    }
+  };
+  */
+
+  telegramBot.catch(async(err, ctx) => {
+    console.log(`Ooops, encountered an error for ${ctx.updateType}`, err);
+  });
+
+
+
+
+
+
+
+
+
+  const discordBot = new Client({
     intents: [
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildModeration,
@@ -97,13 +144,14 @@ DB.connection.once("open", async () => {
     let torn = new TornAPI(Config.torn.api_keys[Math.floor(Math.random()*Config.torn.api_keys.length)]);
 
     //console.log("FACTION JOB RUNNING");
+    /*
     for(let f = 0; f < Config.torn.faction.length; f++) {
       Faction.api_update(Config.torn.faction[f]);
     }
     for(let a = 0; a < Config.torn.allied.length; a++) {
       Faction.api_update(Config.torn.allied[a]);
     }
-
+    */
     //faction organized crimes
     /*
     const ocs = (await torn.faction.crimes()).filter(oc => oc.initiated == 0 && oc.time_left == 0);
@@ -251,27 +299,28 @@ DB.connection.once("open", async () => {
       console.log(`[WARNING] The command ${name} was not found.`);
     }
   }
-  client.commands = dsCommands;
+  discordBot.commands = dsCommands;
 
 
   //handle discord events
   for (const ev in BotEvents) {
     //console.error(`HERE: ${util.inspect(BotEvents[ev], true, null, true)}`);
     if (BotEvents[ev].once) {
-      client.once(BotEvents[ev].name, (...args) => BotEvents[ev].execute(client, ...args));
+      discordBot.once(BotEvents[ev].name, (...args) => BotEvents[ev].execute(discordBot, ...args));
     } else {
-      client.on(BotEvents[ev].name, (...args) => BotEvents[ev].execute(client, ...args));
+      discordBot.on(BotEvents[ev].name, (...args) => BotEvents[ev].execute(discordBot, ...args));
     }
   }
 
 
-  client.on("messageCreate", (msg) => {
-    if(msg.channelId === Config.discord.channel_id && !msg.author.bot) {
-      console.log("text: ", util.inspect(msg.cleanContent, true, null, true));
+  discordBot.on("messageCreate", async (msg) => {
+    if(msg.channelId === Config.discord.telegram_id && !msg.author.bot) {
+      //console.log("text: ", util.inspect(msg.cleanContent, true, null, true));
+      await telegramBot.telegram.sendMessage(Config.telegram.group_id, `${msg.author.username}: ${msg.cleanContent}`, {parse_mode: "HTML"});
     }
   });
 
-  client.on(Events.InteractionCreate, async (interaction) => {
+  discordBot.on(Events.InteractionCreate, async (interaction) => {
     if(
       !interaction.isChatInputCommand() && 
       !interaction.isButton() && 
@@ -290,7 +339,7 @@ DB.connection.once("open", async () => {
     }
     else {
       try {
-        await command.execute(client, interaction);
+        await command.execute(discordBot, interaction);
       }
       catch(err) {
         console.error(err);
@@ -300,10 +349,11 @@ DB.connection.once("open", async () => {
 
   });
 
-  client.on(Events.ClientReady, async() => {
-    console.log(`Discord: Logged in as ${client.user.username}!`);
-    client.user.setActivity("your mother undress", { type: ActivityType.Watching });
-    //client.channels.cache.get(Config.discord.channel_id).send(`${client.user.username} reporting for duty!`);
+  discordBot.on(Events.ClientReady, async() => {
+    console.log(`Discord: Logged in as ${discordBot.user.username}!`);
+    discordBot.user.setActivity("your mother undress", { type: ActivityType.Watching });
+    //discordBot.channels.cache.get(Config.discord.channel_id).send(`${discordBot.user.username} reporting for duty!`);
+    /*
     Scheduler.addSimpleIntervalJob(new SimpleIntervalJob(
       { hours: Config.torn.timers.hour, runImmediately: true },
       hour_task,
@@ -319,12 +369,14 @@ DB.connection.once("open", async () => {
       db_task,
       { id: "DBJob", preventOverrun: true }
     ));
+    */
   });
 
   // *******************************************************************************************************************
   // Run bot
   // *******************************************************************************************************************
   console.log("Starting...");
-  await client.login(Config.discord.token);
+  telegramBot.launch().then((r) => { console.log(`Telegram: Logged in as ${telegramBot.botInfo.username}!`); });
+  await discordBot.login(Config.discord.token);
 
 });
