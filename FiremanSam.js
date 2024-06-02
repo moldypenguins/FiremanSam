@@ -24,7 +24,7 @@
 import util from "util";
 
 import Config from "./config.js";
-import { DB, Guild, User } from "./db.js";
+import { DB } from "./db.js";
 
 import { TornAPI } from "ts-torn-api";
 
