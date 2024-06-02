@@ -25,9 +25,9 @@ import mongoose from "mongoose";
 
 let UserSchema = new mongoose.Schema({
   _id: { type: mongoose.Schema.Types.ObjectId, required: true },
-  user_id: { type: Number, unique: true, required: true },
-  user_username: { type: String },
-  user_dmChannel: { type: String },
+  user_id: {},
+  user_discord: { type: Number, unique: true },
+  user_telegram: { type: Number, unique: true },
 });
 
 export default mongoose.model("User", UserSchema, "Users");
