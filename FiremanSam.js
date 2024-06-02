@@ -92,7 +92,7 @@ DB.connection.once("open", async () => {
       //console.log(ctx.message);
       discordBot.channels.cache
         ?.get(Config.discord.telegram_id)
-        .send(`${ctx.message.from.username}: ${ctx.message.text}`);
+        ?.send(`${ctx.message.from.username}: ${ctx.message.text}`);
     }
   });
 
