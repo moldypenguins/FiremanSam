@@ -1,6 +1,6 @@
 "use strict";
 /**
- * Circuit
+ * Fireman Sam
  * Copyright (c) 2023 Craig Roberts
  *
  * This program is free software: you can redistribute it and/or modify
@@ -21,19 +21,10 @@
  * @summary bot commands
  **/
 
-
-//import allied from "./allied.js";
-//import faction from "./faction.js";
 import config from "./config.js";
-import withdrawl from "./withdrawl.js";
-
 
 let BotCommands = {
-  //allied,
-  //faction,
   config,
-  withdrawl
 };
 
 export default BotCommands;
-

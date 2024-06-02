@@ -15,10 +15,11 @@ export default {
       guild_id: guild.id,
       guild_ownerId: guild.ownerId,
       guild_name: guild.name,
-      guild_description: guild.description
+      guild_description: guild.description,
     });
-    
+
     //admin logging
-    client.channels.cache.get(Config.discord.channel_id).send(`GuildCreate: joined guild ${guild.name} (${guild.id}).`);
+    //client.channels.cache.get(Config.discord.channel_id)
+    //.send(`GuildCreate: joined guild ${guild.name} (${guild.id}).`);
   },
 };

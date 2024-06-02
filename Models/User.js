@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 /**
  * Gandalf
  * Copyright (c) 2020 Gandalf Planetarion Tools
@@ -21,14 +21,13 @@
  * @summary Mongoose Model
  **/
 
-
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 let UserSchema = new mongoose.Schema({
-  _id:                {type:mongoose.Schema.Types.ObjectId, required:true},
-  user_id:            {type:Number, unique:true, required:true},
-  user_username:      {type:String},
-  user_dmChannel:     {type:String}
+  _id: { type: mongoose.Schema.Types.ObjectId, required: true },
+  user_id: { type: Number, unique: true, required: true },
+  user_username: { type: String },
+  user_dmChannel: { type: String },
 });
 
-export default mongoose.model('User', UserSchema, 'Users');
+export default mongoose.model("User", UserSchema, "Users");
