@@ -26,8 +26,6 @@ import util from "util";
 import Config from "./config.js";
 import { DB } from "./db.js";
 
-import { TornAPI } from "ts-torn-api";
-
 import { Context, Telegraf } from "telegraf";
 
 import {

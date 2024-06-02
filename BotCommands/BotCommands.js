@@ -21,10 +21,10 @@
  * @summary bot commands
  **/
 
-import config from "./config.js";
+//import config from "./config.js";
 
 let BotCommands = {
-  config,
+  //config,
 };
 
 export default BotCommands;
