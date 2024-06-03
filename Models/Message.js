@@ -23,11 +23,11 @@
 
 import mongoose from "mongoose";
 
-let UserSchema = new mongoose.Schema({
+let MessageSchema = new mongoose.Schema({
   _id: { type: mongoose.Schema.Types.ObjectId, required: true },
-  user_id: { type: Number, unique: true },
-  user_nickname: { type: String, unique: true },
-  user_telegram: { type: Number, unique: true },
+  message_id: { type: Number, unique: true, required: true },
+  message_telegram: { type: Number, unique: true, required: true },
+  message_time: { type: Date, required: true },
 });
 
-export default mongoose.model("User", UserSchema, "Users");
+export default mongoose.model("Message", MessageSchema, "Messages");

@@ -24,6 +24,7 @@
 import mongoose from "mongoose";
 import Config from "./config.js";
 import Guild from "./Models/Guild.js";
+import Message from "./Models/Message.js";
 import User from "./Models/User.js";
 
 mongoose.set("strictQuery", true);
@@ -37,4 +38,4 @@ mongoose
 mongoose.connection.on("error", (err) => console.log(err.reason));
 mongoose.connection.once("open", () => console.log("Database loaded."));
 
-export { mongoose as DB, Guild, User };
+export { mongoose as DB, Guild, Message, User };

@@ -24,7 +24,7 @@
 import util from "util";
 
 import Config from "./config.js";
-import { DB, Guild, User } from "./db.js";
+import { DB, Guild, Message, User } from "./db.js";
 
 import { Context, Telegraf } from "telegraf";
 
@@ -82,11 +82,18 @@ if (argv.register) {
 
 function getTelegramName(user) {
   let name = null;
+  //lookup link in database
+  //let member = User.findOne({user_telegram: user.id});
+  //if (member) {
+  //  name = member.user_nickname
+  //} else {
+  //use telegram identification
   if (user.username) {
     name = user.username;
   } else {
     name = `${user.first_name}` + (user.last_name ? ` ${user.last_name}` : "");
   }
+  //}
   return name;
 }
 
@@ -112,44 +119,62 @@ DB.connection.once("open", async () => {
       ctx.message?.chat?.type !== "private"
     ) {
       //console.log("OTHER: ", util.inspect(ctx.message.animation, true, null, true));
+      let ds = null;
       if (ctx.message?.photo?.length > 0) {
         let picLink = await telegramBot.telegram.getFileLink(
           ctx.message.photo.pop().file_id
         );
-        discordBot.channels.cache?.get(Config.discord.telegram_id)?.send({
-          files: [new AttachmentBuilder(picLink.href)],
-          content:
-            `${bold(italic(getTelegramName(ctx.message.from)))}` +
-            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
-        });
+        ds = await discordBot.channels.cache
+          ?.get(Config.discord.telegram_id)
+          ?.send({
+            files: [new AttachmentBuilder(picLink.href)],
+            content:
+              `${bold(italic(getTelegramName(ctx.message.from)))}` +
+              (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+          });
       } else if (ctx.message?.animation) {
         let picLink = await telegramBot.telegram.getFileLink(
           ctx.message.animation.file_id
         );
-        discordBot.channels.cache?.get(Config.discord.telegram_id)?.send({
-          files: [new AttachmentBuilder(picLink.href)],
-          content:
-            `${bold(italic(getTelegramName(ctx.message.from)))}` +
-            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
-        });
+        ds = await discordBot.channels.cache
+          ?.get(Config.discord.telegram_id)
+          ?.send({
+            files: [new AttachmentBuilder(picLink.href)],
+            content:
+              `${bold(italic(getTelegramName(ctx.message.from)))}` +
+              (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+          });
       } else if (
         ctx.message?.document?.mime_type?.toLowerCase().startsWith("image")
       ) {
         let picLink = await telegramBot.telegram.getFileLink(
           ctx.message.document.file_id
         );
-        discordBot.channels.cache?.get(Config.discord.telegram_id)?.send({
-          files: [new AttachmentBuilder(picLink.href)],
-          content:
-            `${bold(italic(getTelegramName(ctx.message.from)))}` +
-            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
-        });
+        ds = await discordBot.channels.cache
+          ?.get(Config.discord.telegram_id)
+          ?.send({
+            files: [new AttachmentBuilder(picLink.href)],
+            content:
+              `${bold(italic(getTelegramName(ctx.message.from)))}` +
+              (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+          });
       } else {
-        discordBot.channels.cache?.get(Config.discord.telegram_id)?.send({
-          content: `${bold(italic(getTelegramName(ctx.message.from)))}: ${
-            ctx.message.text
-          }`,
-        });
+        ds = await discordBot.channels.cache
+          ?.get(Config.discord.telegram_id)
+          ?.send({
+            content: `${bold(italic(getTelegramName(ctx.message.from)))}: ${
+              ctx.message.text
+            }`,
+          });
+      }
+
+      if (ds) {
+        let saved = await new Message({
+          _id: new DB.Types.ObjectId(),
+          message_id: Number(ds.id),
+          message_telegram: ctx.message.message_id,
+          message_time: new Date(ctx.message.date),
+        }).save();
       }
     }
     next();
@@ -229,9 +254,9 @@ DB.connection.once("open", async () => {
   discordBot.on("messageCreate", async (msg) => {
     if (msg.channelId === Config.discord.telegram_id && !msg.author.bot) {
       //console.log("text: ", util.inspect(msg.cleanContent, true, null, true));
-
+      let tg = null;
       if (msg.attachments?.size == 1 && msg.attachments?.every(isImage)) {
-        telegramBot.telegram.sendPhoto(
+        tg = await telegramBot.telegram.sendPhoto(
           Config.telegram.group_id,
           msg.attachments.first().url,
           {
@@ -242,18 +267,30 @@ DB.connection.once("open", async () => {
           }
         );
       } else if (msg.attachments?.size > 1 && msg.attachments?.every(isImage)) {
-        telegramBot.telegram.sendMediaGroup(
+        tg = await telegramBot.telegram.sendMediaGroup(
           Config.telegram.group_id,
-          msg.attachments.map((a) => {
-            return a;
+          msg.attachments.map((att) => {
+            return {
+              media: att.url,
+              caption: att.caption,
+              type: "photo",
+            };
           })
         );
       } else {
-        await telegramBot.telegram.sendMessage(
+        tg = await telegramBot.telegram.sendMessage(
           Config.telegram.group_id,
           `<b><i>${msg.member.nickname}</i></b>: ${msg.cleanContent}`,
           { parse_mode: "HTML" }
         );
+      }
+      if (tg) {
+        let saved = await new Message({
+          _id: new DB.Types.ObjectId(),
+          message_id: Number(msg.id),
+          message_telegram: tg.message_id,
+          message_time: new Date(msg.createdAt),
+        }).save();
       }
     }
   });

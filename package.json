@@ -15,7 +15,7 @@
   },
   "exports": "./FiremanSam.js",
   "scripts": {
-    "test": "node ./FiremanSam.js",
+    "dev": "node ./FiremanSam.js",
     "start": "nodemon ./FiremanSam.js"
   },
   "dependencies": {
