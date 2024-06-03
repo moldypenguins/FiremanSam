@@ -1,7 +1,7 @@
 "use strict";
 /**
- * FiremanSam
- * Copyright (c) 2023 The Dumpster Fire - Craig Roberts
+ * Fireman Sam
+ * Copyright (c) 2023 Craig Roberts
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

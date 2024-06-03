@@ -16,19 +16,18 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see https://www.gnu.org/licenses/gpl-3.0.html
  *
- * @name Guild.js
- * @version 2022/11/11
+ * @name Message.js
+ * @version 2021/11/14
  * @summary Mongoose Model
  **/
 
 import mongoose from "mongoose";
 
-let GuildSchema = new mongoose.Schema({
+let UserSchema = new mongoose.Schema({
   _id: { type: mongoose.Schema.Types.ObjectId, required: true },
-  guild_id: { type: String, unique: true, required: true },
-  guild_ownerId: { type: String, required: true },
-  guild_name: { type: String },
-  guild_description: { type: String },
+  user_id: { type: Number, unique: true },
+  user_nickname: { type: String, unique: true },
+  user_telegram: { type: Number, unique: true },
 });
 
-export default mongoose.model("Guilds", GuildSchema, "Guilds");
+export default mongoose.model("User", UserSchema, "Users");
