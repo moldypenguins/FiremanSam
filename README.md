@@ -4,6 +4,7 @@
   <img alt="logo" src=".github/images/fireman_sam.png">
 </picture>
 <h1>Fireman Sam</h1>
+<h3>When he hears the fire bell chime, Fireman Sam is there on time.</h3>
 
 ---
 
