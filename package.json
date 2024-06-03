@@ -25,6 +25,7 @@
     "minimist":"^1.2.8",
     "mongoose":"^8.4.1",
     "mongoose-autopopulate": "^1.1.0",
+    "nodemon": "^3.1.2",
     "numeral":"^2.0.6",
     "telegraf":"^4.16.3"
   },
@@ -32,7 +33,6 @@
     "@typescript-eslint/eslint-plugin": "^7.11.0",
     "@typescript-eslint/parser": "^7.11.0",
     "eslint": "^8.56.0",
-    "eslint-plugin-jsdoc": "^48.2.7",
-    "nodemon": "^3.1.2"
+    "eslint-plugin-jsdoc": "^48.2.7"
   }
 }
