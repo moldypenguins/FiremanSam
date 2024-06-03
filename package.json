@@ -15,7 +15,8 @@
   },
   "exports": "./FiremanSam.js",
   "scripts": {
-    "test": "nodemon ./FiremanSam.js"
+    "test": "node ./FiremanSam.js",
+    "start": "nodemon ./FiremanSam.js"
   },
   "dependencies": {
     "dayjs":"^1.11.11",
