@@ -25,8 +25,8 @@ import mongoose from "mongoose";
 
 let UserSchema = new mongoose.Schema({
   _id: { type: mongoose.Schema.Types.ObjectId, required: true },
-  user_id: {},
-  user_discord: { type: Number, unique: true },
+  user_id: { type: Number, unique: true },
+  user_nickname: { type: String, unique: true },
   user_telegram: { type: Number, unique: true },
 });
 

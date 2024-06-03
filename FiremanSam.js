@@ -24,20 +24,24 @@
 import util from "util";
 
 import Config from "./config.js";
-import { DB } from "./db.js";
+import { DB, Guild, User } from "./db.js";
 
 import { Context, Telegraf } from "telegraf";
 
 import {
   ActivityType,
+  AttachmentBuilder,
   Client,
   Collection,
   Events,
   GatewayIntentBits,
   Routes,
   REST,
-  Guild,
   roleMention,
+  blockQuote,
+  bold,
+  italic,
+  quote,
 } from "discord.js";
 import BotCommands from "./BotCommands/BotCommands.js";
 import BotEvents from "./BotEvents/BotEvents.js";
@@ -74,6 +78,24 @@ if (argv.register) {
   })();
 }
 
+//##################################################################################################
+
+function getTelegramName(user) {
+  let name = null;
+  if (user.username) {
+    name = user.username;
+  } else {
+    name = `${user.first_name}` + (user.last_name ? ` ${user.last_name}` : "");
+  }
+  return name;
+}
+
+function isImage(attachment, index, array) {
+  return attachment.contentType.startsWith("image");
+}
+
+//##################################################################################################
+
 //connect to database
 DB.connection.once("open", async () => {
   const telegramBot = new Telegraf(Config.telegram.token, {
@@ -82,18 +104,55 @@ DB.connection.once("open", async () => {
   });
 
   telegramBot.use(async (ctx, next) => {
-    //console.log("CTX: ", util.inspect(ctx.message, true, null, true));
+    //console.log("MSG: ", util.inspect(ctx.message, true, null, true));
     //check for unknown groups
     if (
-      ctx.message?.chat?.id &&
+      ctx.message?.chat?.id == Config.telegram.group_id &&
       !ctx.message?.from?.is_bot &&
-      ctx.message.chat.type !== "private"
+      ctx.message?.chat?.type !== "private"
     ) {
-      //console.log(ctx.message);
-      discordBot.channels.cache
-        ?.get(Config.discord.telegram_id)
-        ?.send(`${ctx.message.from.username}: ${ctx.message.text}`);
+      //console.log("OTHER: ", util.inspect(ctx.message.animation, true, null, true));
+      if (ctx.message?.photo?.length > 0) {
+        let picLink = await telegramBot.telegram.getFileLink(
+          ctx.message.photo.pop().file_id
+        );
+        discordBot.channels.cache?.get(Config.discord.telegram_id)?.send({
+          files: [new AttachmentBuilder(picLink.href)],
+          content:
+            `${bold(italic(getTelegramName(ctx.message.from)))}` +
+            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+        });
+      } else if (ctx.message?.animation) {
+        let picLink = await telegramBot.telegram.getFileLink(
+          ctx.message.animation.file_id
+        );
+        discordBot.channels.cache?.get(Config.discord.telegram_id)?.send({
+          files: [new AttachmentBuilder(picLink.href)],
+          content:
+            `${bold(italic(getTelegramName(ctx.message.from)))}` +
+            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+        });
+      } else if (
+        ctx.message?.document?.mime_type?.toLowerCase().startsWith("image")
+      ) {
+        let picLink = await telegramBot.telegram.getFileLink(
+          ctx.message.document.file_id
+        );
+        discordBot.channels.cache?.get(Config.discord.telegram_id)?.send({
+          files: [new AttachmentBuilder(picLink.href)],
+          content:
+            `${bold(italic(getTelegramName(ctx.message.from)))}` +
+            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+        });
+      } else {
+        discordBot.channels.cache?.get(Config.discord.telegram_id)?.send({
+          content: `${bold(italic(getTelegramName(ctx.message.from)))}: ${
+            ctx.message.text
+          }`,
+        });
+      }
     }
+    next();
   });
 
   /*
@@ -170,11 +229,32 @@ DB.connection.once("open", async () => {
   discordBot.on("messageCreate", async (msg) => {
     if (msg.channelId === Config.discord.telegram_id && !msg.author.bot) {
       //console.log("text: ", util.inspect(msg.cleanContent, true, null, true));
-      await telegramBot.telegram.sendMessage(
-        Config.telegram.group_id,
-        `${msg.author.username}: ${msg.cleanContent}`,
-        { parse_mode: "HTML" }
-      );
+
+      if (msg.attachments?.size == 1 && msg.attachments?.every(isImage)) {
+        telegramBot.telegram.sendPhoto(
+          Config.telegram.group_id,
+          msg.attachments.first().url,
+          {
+            caption:
+              `<b><i>${msg.member.nickname}</i></b>` +
+              (msg.content.length <= 0 ? "" : `: ${msg.cleanContent}`),
+            parse_mode: "HTML",
+          }
+        );
+      } else if (msg.attachments?.size > 1 && msg.attachments?.every(isImage)) {
+        telegramBot.telegram.sendMediaGroup(
+          Config.telegram.group_id,
+          msg.attachments.map((a) => {
+            return a;
+          })
+        );
+      } else {
+        await telegramBot.telegram.sendMessage(
+          Config.telegram.group_id,
+          `<b><i>${msg.member.nickname}</i></b>: ${msg.cleanContent}`,
+          { parse_mode: "HTML" }
+        );
+      }
     }
   });
 
