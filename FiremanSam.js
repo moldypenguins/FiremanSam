@@ -84,17 +84,18 @@ if (argv.register) {
 function getTelegramName(user) {
   let name = null;
   //lookup link in database
-  //let member = Member.findOne({member_telegram: user.id});
-  //if (member) {
-  //  name = member.member_nickname
-  //} else {
-  //use telegram identification
-  if (user.username) {
-    name = user.username;
+  let member = Member.findOne({ member_telegram: user.id });
+  if (member) {
+    name = Member.member_nickname;
   } else {
-    name = `${user.first_name}` + (user.last_name ? ` ${user.last_name}` : "");
+    //use telegram identification
+    if (user.username) {
+      name = user.username;
+    } else {
+      name =
+        `${user.first_name}` + (user.last_name ? ` ${user.last_name}` : "");
+    }
   }
-  //}
   return name;
 }
 
