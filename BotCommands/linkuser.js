@@ -65,8 +65,19 @@ export default {
     if (
       !interaction.member.permissions.has(PermissionFlagsBits.Administrator)
     ) {
+      interaction.reply({
+        embeds: [
+          {
+            color: 0xff0000,
+            title: "Error",
+            description: bold(
+              "You do not have the required permissions to use this command."
+            ),
+          },
+        ],
+        ephemeral: true,
+      });
       return;
-      //put message here
     }
 
     if (interaction.isChatInputCommand()) {

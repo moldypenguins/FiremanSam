@@ -99,7 +99,7 @@ function getTelegramName(user) {
 }
 
 function isImage(attachment, index, array) {
-  return attachment.contentType.startsWith("image");
+  return attachment?.contentType?.startsWith("image");
 }
 
 //##################################################################################################
