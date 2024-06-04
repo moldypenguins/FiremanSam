@@ -81,10 +81,10 @@ if (argv.register) {
 
 //##################################################################################################
 
-function getTelegramName(user) {
+async function getTelegramName(user) {
   let name = null;
   //lookup link in database
-  let _member = Member.findOne({ member_telegram: user.id });
+  let _member = await Member.findOne({ member_telegram: user.id });
   if (_member) {
     name = _member.member_nickname;
   } else {
@@ -155,7 +155,7 @@ DB.connection.once("open", async () => {
           ?.send({
             files: [new AttachmentBuilder(picLink.href)],
             content:
-              `${bold(italic(getTelegramName(ctx.message.from)))}` +
+              `${bold(italic(await getTelegramName(ctx.message.from)))}` +
               (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
           });
       } else if (ctx.message?.animation) {
@@ -167,7 +167,7 @@ DB.connection.once("open", async () => {
           ?.send({
             files: [new AttachmentBuilder(picLink.href)],
             content:
-              `${bold(italic(getTelegramName(ctx.message.from)))}` +
+              `${bold(italic(await getTelegramName(ctx.message.from)))}` +
               (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
           });
       } else if (
@@ -181,16 +181,16 @@ DB.connection.once("open", async () => {
           ?.send({
             files: [new AttachmentBuilder(picLink.href)],
             content:
-              `${bold(italic(getTelegramName(ctx.message.from)))}` +
+              `${bold(italic(await getTelegramName(ctx.message.from)))}` +
               (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
           });
       } else {
         ds = await discordBot.channels.cache
           ?.get(Config.discord.telegram_id)
           ?.send({
-            content: `${bold(italic(getTelegramName(ctx.message.from)))}: ${
-              ctx.message.text
-            }`,
+            content: `${bold(
+              italic(await getTelegramName(ctx.message.from))
+            )}: ${ctx.message.text}`,
           });
       }
 
@@ -210,7 +210,7 @@ DB.connection.once("open", async () => {
     if (!(await Member.exists({ member_telegram: ctx.message.from.id }))) {
       await new Member({
         _id: new DB.Types.ObjectId(),
-        member_nickname: getTelegramName(ctx.message.from),
+        member_nickname: await getTelegramName(ctx.message.from),
         member_telegram: ctx.message.from.id,
       }).save();
       ctx.replyWithHTML(
