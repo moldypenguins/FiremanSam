@@ -56,10 +56,12 @@ export default {
 
   async execute(client, interaction) {
     //console.log(`INTERACTION: ${util.inspect(interaction, true, 1, true)}`);
-    if (interaction.user.id != "346771877211144194") {
+    if (
+      !interaction.member.permissions.has(PermissionFlagsBits.Administrator)
+    ) {
       return;
+      //put message here
     }
-    //interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)
 
     if (interaction.isChatInputCommand()) {
       let _m = await Member.find({ member_id: null });
