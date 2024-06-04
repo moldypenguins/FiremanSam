@@ -56,9 +56,7 @@ export default {
 
   async execute(client, interaction) {
     //console.log(`INTERACTION: ${util.inspect(interaction, true, 1, true)}`);
-    if (
-      !interaction.member.permissions.has(PermissionFlagsBits.Administrator)
-    ) {
+    if (!interaction.member.permissions.has(PermissionFlagsBits.SendMessages)) {
       interaction.reply({
         embeds: [
           {
