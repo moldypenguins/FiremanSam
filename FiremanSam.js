@@ -84,9 +84,9 @@ if (argv.register) {
 function getTelegramName(user) {
   let name = null;
   //lookup link in database
-  let member = Member.findOne({ member_telegram: user.id });
-  if (member) {
-    name = Member.member_nickname;
+  let _member = Member.findOne({ member_telegram: user.id });
+  if (_member) {
+    name = _member.member_nickname;
   } else {
     //use telegram identification
     if (user.username) {
