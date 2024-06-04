@@ -18,13 +18,13 @@
  *
  * @name FiremanSam.js
  * @version 2023-07-04
- * @summary The Dumpster Fire
+ * @summary When he hears the fire bell chime, Fireman Sam is there on time.
  **/
 
 import util from "util";
 
 import Config from "./config.js";
-import { DB, Guild, Message, User } from "./db.js";
+import { DB, Guild, Message, Member } from "./db.js";
 
 import { Context, Telegraf } from "telegraf";
 
@@ -75,6 +75,7 @@ if (argv.register) {
     } catch (err) {
       console.error(err);
     }
+    process.exit(0);
   })();
 }
 
@@ -83,9 +84,9 @@ if (argv.register) {
 function getTelegramName(user) {
   let name = null;
   //lookup link in database
-  //let member = User.findOne({user_telegram: user.id});
+  //let member = Member.findOne({member_telegram: user.id});
   //if (member) {
-  //  name = member.user_nickname
+  //  name = member.member_nickname
   //} else {
   //use telegram identification
   if (user.username) {
@@ -110,13 +111,37 @@ DB.connection.once("open", async () => {
     username: Config.telegram.username,
   });
 
+  /*
+  telegramBot.context.mentions = {
+    get: async (message) => {
+      let mentions = [];
+      if(message.entities !== undefined) {
+        let eMentions = message.entities.filter(e => e.type === "mention");
+        for (let i = 0; i < eMentions.length; i++) {
+          //console.log(`EMENT: ${util.inspect(eMentions[i], true, null, true)}`);
+          let usrnm = message.text.slice(eMentions[i].offset, eMentions[i].offset + eMentions[i].length);
+          //console.log('usrnm: ' + util.inspect(usrnm, false, null, true));
+          mentions.push(eMentions[i]);
+        }
+        let etMentions = message.entities.filter(e => e.type === "text_mention");
+        for (let i = 0; i < etMentions.length; i++) {
+          mentions.push(etMentions[i]);
+        }
+      }
+      return mentions;
+    }
+  };
+  */
+
   telegramBot.use(async (ctx, next) => {
     //console.log("MSG: ", util.inspect(ctx.message, true, null, true));
     //check for unknown groups
     if (
       ctx.message?.chat?.id == Config.telegram.group_id &&
       !ctx.message?.from?.is_bot &&
-      ctx.message?.chat?.type !== "private"
+      ctx.message?.chat?.type !== "private" &&
+      !ctx.message?.entities?.filter((e) => e.type === "bot_command")?.length >
+        0
     ) {
       //console.log("OTHER: ", util.inspect(ctx.message.animation, true, null, true));
       let ds = null;
@@ -180,27 +205,20 @@ DB.connection.once("open", async () => {
     next();
   });
 
-  /*
-  telegramBot.context.mentions = {
-    get: async (message) => {
-      let mentions = [];
-      if(message.entities !== undefined) {
-        let eMentions = message.entities.filter(e => e.type === "mention");
-        for (let i = 0; i < eMentions.length; i++) {
-          //console.log(`EMENT: ${util.inspect(eMentions[i], true, null, true)}`);
-          let usrnm = message.text.slice(eMentions[i].offset, eMentions[i].offset + eMentions[i].length);
-          //console.log('usrnm: ' + util.inspect(usrnm, false, null, true));
-          mentions.push(eMentions[i]);
-        }
-        let etMentions = message.entities.filter(e => e.type === "text_mention");
-        for (let i = 0; i < etMentions.length; i++) {
-          mentions.push(etMentions[i]);
-        }
-      }
-      return mentions;
+  telegramBot.start(async (ctx) => {
+    if (!(await Member.exists({ member_telegram: ctx.message.from.id }))) {
+      await new Member({
+        _id: new DB.Types.ObjectId(),
+        member_nickname: getTelegramName(ctx.message.from),
+        member_telegram: ctx.message.from.id,
+      }).save();
+      ctx.replyWithHTML(
+        "You can now link your Discord user to your Telegram user."
+      );
+    } else {
+      ctx.replyWithHTML("You already did this.");
     }
-  };
-  */
+  });
 
   telegramBot.catch(async (err, ctx) => {
     console.log(`Ooops, encountered an error for ${ctx.updateType}`, err);
@@ -331,19 +349,17 @@ DB.connection.once("open", async () => {
   });
 
   discordBot.on(Events.ClientReady, async () => {
-    console.log(`Discord: Logged in as ${discordBot.user.username}!`);
+    console.log(`Discord: Logged in as ${discordBot.user.tag}!`);
     discordBot.user.setActivity("your mother undress", {
       type: ActivityType.Watching,
     });
-    //discordBot.channels.cache.get(Config.discord.channel_id)
-    //.send(`${discordBot.user.username} reporting for duty!`);
   });
 
   // *******************************************************************************************************************
   // Run bot
   // *******************************************************************************************************************
   console.log("Starting...");
-  telegramBot.launch().then((r) => {
+  telegramBot.launch(() => {
     console.log(`Telegram: Logged in as ${telegramBot.botInfo.username}!`);
   });
   await discordBot.login(Config.discord.token);

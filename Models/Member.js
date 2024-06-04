@@ -16,18 +16,20 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see https://www.gnu.org/licenses/gpl-3.0.html
  *
- * @name User.js
+ * @name Member.js
  * @version 2021/11/14
  * @summary Mongoose Model
  **/
 
 import mongoose from "mongoose";
 
-let UserSchema = new mongoose.Schema({
+let MemberSchema = new mongoose.Schema({
   _id: { type: mongoose.Schema.Types.ObjectId, required: true },
-  user_id: { type: Number, unique: true },
-  user_nickname: { type: String, unique: true },
-  user_telegram: { type: Number, unique: true },
+  member_id: { type: String },
+  member_nickname: { type: String, unique: true, required: true },
+  member_telegram: { type: String, unique: true, required: true },
 });
 
-export default mongoose.model("User", UserSchema, "Users");
+MemberSchema.index({ member_id: 1 }, { unique: true, sparse: true });
+
+export default mongoose.model("Member", MemberSchema, "Members");
