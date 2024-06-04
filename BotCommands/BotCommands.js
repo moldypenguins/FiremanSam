@@ -22,9 +22,11 @@
  **/
 
 import link from "./link.js";
+import linkuser from "./linkuser.js";
 
 let BotCommands = {
   link,
+  linkuser,
 };
 
 export default BotCommands;

@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see https://www.gnu.org/licenses/gpl-3.0.html
  *
- * @name link.js
+ * @name linkuser.js
  * @version 2023/04/20
  * @summary Fireman Sam command
  **/
@@ -55,8 +55,14 @@ dayjs.extend(timezone);
 
 export default {
   data: new SlashCommandBuilder()
-    .setName("link")
-    .setDescription("Link your Discord User to your Telegram user.")
+    .setName("linkuser")
+    .setDescription("Link Discord User to Telegram user.")
+    .addUserOption((option) =>
+      option
+        .setName("user")
+        .setDescription("The Discord user to set.")
+        .setRequired(true)
+    )
     .setDMPermission(false)
     .setDefaultMemberPermissions(PermissionFlagsBits.SendMessages),
 
@@ -68,14 +74,16 @@ export default {
     //interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)
 
     if (interaction.isChatInputCommand()) {
-      let _m = await Member.find({ member_id: null });
+      let _u = interaction.options.getUser("user");
+
+      let _m = await Member.find({});
       if (_m?.length > 0) {
         let _options = _m.map((o) => {
           return { label: o.member_nickname, value: o.member_telegram };
         });
 
         let optionsSelect = new StringSelectMenuBuilder()
-          .setCustomId("link")
+          .setCustomId(`linkuser_${_u.id}`)
           .setPlaceholder(" Options")
           .setMinValues(1)
           .setMaxValues(1)
@@ -91,23 +99,14 @@ export default {
           components: [new ActionRowBuilder().addComponents(optionsSelect)],
           ephemeral: false,
         });
-      } else {
-        interaction.reply({
-          embeds: [
-            {
-              color: 0xff0000,
-              title: "Error",
-              description: bold(
-                "There are no available Telegram users to link to."
-              ),
-            },
-          ],
-          ephemeral: true,
-        });
       }
     } else if (interaction.isStringSelectMenu()) {
       let _c = client.channels.cache.get(Config.discord.telegram_id);
-      let _u = interaction.member;
+
+      let _u = interaction.guild.members.cache.get(
+        interaction.customId.split("_")[1]
+      );
+
       let _t = await Member.findOne({ member_telegram: interaction.values[0] });
       if (!_t) {
         await _c.send({
