@@ -106,6 +106,9 @@ function isImage(attachment, index, array) {
 
 //connect to database
 DB.connection.once("open", async () => {
+  // ##############################################################################################
+  // Telegram
+  // ##############################################################################################
   const telegramBot = new Telegraf(Config.telegram.token, {
     telegram: { agent: null, webhookReply: false },
     username: Config.telegram.username,
@@ -207,6 +210,9 @@ DB.connection.once("open", async () => {
     console.log(`Ooops, encountered an error for ${ctx.updateType}`, err);
   });
 
+  // ##############################################################################################
+  // Discord
+  // ##############################################################################################
   const discordBot = new Client({
     intents: [
       GatewayIntentBits.Guilds,
@@ -223,6 +229,9 @@ DB.connection.once("open", async () => {
     partials: [Partials.Message, Partials.Reaction],
   });
 
+  // ##############################################################################################
+  // Discord Commands
+  // ##############################################################################################
   let dsCommands = new Collection();
   for (let [name, command] of Object.entries(BotCommands)) {
     if (BotCommands[name]) {
@@ -239,7 +248,9 @@ DB.connection.once("open", async () => {
   }
   discordBot.commands = dsCommands;
 
-  //handle discord events
+  // ##############################################################################################
+  // Discord Events
+  // ##############################################################################################
   for (const ev in BotEvents) {
     //console.error(`HERE: ${util.inspect(BotEvents[ev], true, null, true)}`);
     if (BotEvents[ev].once) {
@@ -250,11 +261,10 @@ DB.connection.once("open", async () => {
   }
 
   // ##############################################################################################
-  // MessageReactionAdd
+  // Discord MessageReactionAdd
   // ##############################################################################################
   discordBot.on(Events.MessageReactionAdd, async (reaction, user) => {
-    // When a reaction is received, check if the structure is partial
-
+    // When a reaction is received, check if the structure is partial.
     // If the message this reaction belongs to was removed,
     //   the fetching might result in an API error which should be handled
     try {
@@ -273,17 +283,22 @@ DB.connection.once("open", async () => {
             _message.message_telegram,
             [{ type: "emoji", emoji: "👍" }]
           );
+
+          await telegramBot.telegram.reply(
+            Config.telegram.group_id,
+            `<b><i>${msg.member.nickname}</i></b>: ${msg.cleanContent}`,
+            { parse_mode: "HTML" }
+          );
         }
       }
     } catch (error) {
       console.error("Something went wrong when fetching the message:", error);
-      // Return as `_message.author` may be undefined/null
       return;
     }
   });
 
   // ##############################################################################################
-  // MessageCreate
+  // Discord MessageCreate
   // ##############################################################################################
   discordBot.on(Events.MessageCreate, async (msg) => {
     if (msg.channelId === Config.discord.channel_id && !msg.author.bot) {
@@ -331,7 +346,7 @@ DB.connection.once("open", async () => {
   });
 
   // ##############################################################################################
-  // InteractionCreate
+  // Discord InteractionCreate
   // ##############################################################################################
   discordBot.on(Events.InteractionCreate, async (interaction) => {
     console.log(`INTERACTION:\n${util.inspect(interaction, true, null, true)}`);
@@ -376,7 +391,7 @@ DB.connection.once("open", async () => {
   });
 
   // ##############################################################################################
-  // Run bot
+  // Run bots
   // ##############################################################################################
   console.log("Starting...");
   telegramBot.launch({ allowedUpdates: ["message", "message_reaction"] }, () => {
@@ -384,7 +399,29 @@ DB.connection.once("open", async () => {
   });
   await discordBot.login(Config.discord.token);
 
-  // Enable graceful stop
-  process.once("SIGINT", () => telegramBot.stop("SIGINT"));
-  process.once("SIGTERM", () => telegramBot.stop("SIGTERM"));
+  // ##############################################################################################
+  // Graceful Shutdown
+  // ##############################################################################################
+  process.on("SIGINT", async () => {
+    await gracefulShutdown("SIGINT");
+  });
+  process.on("SIGTERM", async () => {
+    await gracefulShutdown("SIGTERM");
+  });
+
+  async function gracefulShutdown(signal) {
+    console.log(`\n${signal}: Attempting to gracefully shut down.`);
+    try {
+      telegramBot.stop(signal);
+      console.log(`${signal}: Telegram bot stopped.`);
+      await discordBot.destroy();
+      console.log(`${signal}: Discord bot stopped.`);
+      await DB.connection.close(false);
+      console.log(`${signal}: MongoDB connection closed.`);
+      process.exit(0);
+    } catch (err) {
+      console.log(`${signal}: Encountered an error while attempting to gracefully shut down.`);
+      process.exit(1);
+    }
+  }
 });
