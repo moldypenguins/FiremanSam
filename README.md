@@ -10,7 +10,7 @@
 
 ![License](https://img.shields.io/github/license/moldypenguins/FiremanSam?logo=GNU&style=for-the-badge&color=BD0000)
 ![Last Commit](https://img.shields.io/github/last-commit/moldypenguins/FiremanSam?style=for-the-badge&logo=GitHub)
-![Open Issues](https://img.shields.io/github/issues-raw/moldypenguins/FiremanSam?style=for-the-badge&logo=GitHub)
+![Open Issues](https://img.shields.io/github/issues-raw/moldypenguins/FiremanSam?style=for-the-badge&logo=GitHub)  
 ![Dependabot](https://img.shields.io/static/v1?style=for-the-badge&label=Dependabot&message=enabled&color=33CC11&logo=Dependabot)
 ![CodeQL](https://img.shields.io/github/actions/workflow/status/moldypenguins/FiremanSam/codeql-analysis.yml?label=CodeQL&logo=github&style=for-the-badge)
 ![ESLint](https://img.shields.io/github/actions/workflow/status/moldypenguins/FiremanSam/eslint.yml?label=ESLint&logo=eslint&style=for-the-badge)
