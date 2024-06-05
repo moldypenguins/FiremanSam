@@ -35,6 +35,7 @@ import {
   Collection,
   Events,
   GatewayIntentBits,
+  Partials,
   Routes,
   REST,
   roleMention,
@@ -67,10 +68,9 @@ if (argv.register) {
       for (let [key, value] of Object.entries(BotCommands)) {
         botCommands.push(value.data.toJSON());
       }
-      const data = await rest.put(
-        Routes.applicationCommands(Config.discord.client_id),
-        { body: botCommands }
-      );
+      const data = await rest.put(Routes.applicationCommands(Config.discord.client_id), {
+        body: botCommands,
+      });
       console.log(`Reloaded ${data.length} discord commands.`);
     } catch (err) {
       console.error(err);
@@ -92,8 +92,7 @@ async function getTelegramName(user) {
     if (user.username) {
       name = user.username;
     } else {
-      name =
-        `${user.first_name}` + (user.last_name ? ` ${user.last_name}` : "");
+      name = `${user.first_name}` + (user.last_name ? ` ${user.last_name}` : "");
     }
   }
   return name;
@@ -136,68 +135,53 @@ DB.connection.once("open", async () => {
 
   telegramBot.use(async (ctx, next) => {
     //console.log("MSG: ", util.inspect(ctx.message, true, null, true));
+    telegramBot.reaction("👍", (ctx) => {
+      console.log("reaction added"); // only responds to 👍
+    });
     //check for unknown groups
     if (
       ctx.message?.chat?.id == Config.telegram.group_id &&
       !ctx.message?.from?.is_bot &&
       ctx.message?.chat?.type !== "private" &&
-      !ctx.message?.entities?.filter((e) => e.type === "bot_command")?.length >
-        0
+      !ctx.message?.entities?.filter((e) => e.type === "bot_command")?.length > 0
     ) {
       //console.log("OTHER: ", util.inspect(ctx.message.animation, true, null, true));
       let ds = null;
       if (ctx.message?.photo?.length > 0) {
-        let picLink = await telegramBot.telegram.getFileLink(
-          ctx.message.photo.pop().file_id
-        );
-        ds = await discordBot.channels.cache
-          ?.get(Config.discord.telegram_id)
-          ?.send({
-            files: [new AttachmentBuilder(picLink.href)],
-            content:
-              `${bold(italic(await getTelegramName(ctx.message.from)))}` +
-              (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
-          });
+        let picLink = await telegramBot.telegram.getFileLink(ctx.message.photo.pop().file_id);
+        ds = await discordBot.channels.cache?.get(Config.discord.channel_id)?.send({
+          files: [new AttachmentBuilder(picLink.href)],
+          content:
+            `${bold(italic(await getTelegramName(ctx.message.from)))}` +
+            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+        });
       } else if (ctx.message?.animation) {
-        let picLink = await telegramBot.telegram.getFileLink(
-          ctx.message.animation.file_id
-        );
-        ds = await discordBot.channels.cache
-          ?.get(Config.discord.telegram_id)
-          ?.send({
-            files: [new AttachmentBuilder(picLink.href)],
-            content:
-              `${bold(italic(await getTelegramName(ctx.message.from)))}` +
-              (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
-          });
-      } else if (
-        ctx.message?.document?.mime_type?.toLowerCase().startsWith("image")
-      ) {
-        let picLink = await telegramBot.telegram.getFileLink(
-          ctx.message.document.file_id
-        );
-        ds = await discordBot.channels.cache
-          ?.get(Config.discord.telegram_id)
-          ?.send({
-            files: [new AttachmentBuilder(picLink.href)],
-            content:
-              `${bold(italic(await getTelegramName(ctx.message.from)))}` +
-              (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
-          });
+        let picLink = await telegramBot.telegram.getFileLink(ctx.message.animation.file_id);
+        ds = await discordBot.channels.cache?.get(Config.discord.channel_id)?.send({
+          files: [new AttachmentBuilder(picLink.href)],
+          content:
+            `${bold(italic(await getTelegramName(ctx.message.from)))}` +
+            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+        });
+      } else if (ctx.message?.document?.mime_type?.toLowerCase().startsWith("image")) {
+        let picLink = await telegramBot.telegram.getFileLink(ctx.message.document.file_id);
+        ds = await discordBot.channels.cache?.get(Config.discord.channel_id)?.send({
+          files: [new AttachmentBuilder(picLink.href)],
+          content:
+            `${bold(italic(await getTelegramName(ctx.message.from)))}` +
+            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+        });
       } else {
-        ds = await discordBot.channels.cache
-          ?.get(Config.discord.telegram_id)
-          ?.send({
-            content: `${bold(
-              italic(await getTelegramName(ctx.message.from))
-            )}: ${ctx.message.text}`,
-          });
+        ds = await discordBot.channels.cache?.get(Config.discord.channel_id)?.send({
+          content: `${bold(italic(await getTelegramName(ctx.message.from)))}: ${ctx.message.text}`,
+        });
       }
 
       if (ds) {
         let saved = await new Message({
           _id: new DB.Types.ObjectId(),
-          message_id: Number(ds.id),
+          message_type: "telegram",
+          message_discord: Number(ds.id),
           message_telegram: ctx.message.message_id,
           message_time: new Date(ctx.message.date),
         }).save();
@@ -213,9 +197,7 @@ DB.connection.once("open", async () => {
         member_nickname: await getTelegramName(ctx.message.from),
         member_telegram: ctx.message.from.id,
       }).save();
-      ctx.replyWithHTML(
-        "You can now link your Discord user to your Telegram user."
-      );
+      ctx.replyWithHTML("You can now link your Discord user to your Telegram user.");
     } else {
       ctx.replyWithHTML("You already did this.");
     }
@@ -238,6 +220,7 @@ DB.connection.once("open", async () => {
       GatewayIntentBits.DirectMessageTyping,
       GatewayIntentBits.MessageContent,
     ],
+    partials: [Partials.Message, Partials.Reaction],
   });
 
   let dsCommands = new Collection();
@@ -260,18 +243,50 @@ DB.connection.once("open", async () => {
   for (const ev in BotEvents) {
     //console.error(`HERE: ${util.inspect(BotEvents[ev], true, null, true)}`);
     if (BotEvents[ev].once) {
-      discordBot.once(BotEvents[ev].name, (...args) =>
-        BotEvents[ev].execute(discordBot, ...args)
-      );
+      discordBot.once(BotEvents[ev].name, (...args) => BotEvents[ev].execute(discordBot, ...args));
     } else {
-      discordBot.on(BotEvents[ev].name, (...args) =>
-        BotEvents[ev].execute(discordBot, ...args)
-      );
+      discordBot.on(BotEvents[ev].name, (...args) => BotEvents[ev].execute(discordBot, ...args));
     }
   }
 
-  discordBot.on("messageCreate", async (msg) => {
-    if (msg.channelId === Config.discord.telegram_id && !msg.author.bot) {
+  // ##############################################################################################
+  // MessageReactionAdd
+  // ##############################################################################################
+  discordBot.on(Events.MessageReactionAdd, async (reaction, user) => {
+    // When a reaction is received, check if the structure is partial
+
+    // If the message this reaction belongs to was removed,
+    //   the fetching might result in an API error which should be handled
+    try {
+      if (reaction.partial) {
+        reaction = await reaction.fetch();
+      }
+      let _message = await Message.findOne({
+        message_discord: reaction.message.id,
+      });
+      if (_message) {
+        console.log(`"${_message.id}": ${reaction.emoji.name} from ${user.tag}`);
+
+        if (Config.telegram.emojis.includes(reaction.emoji.name)) {
+          await telegramBot.telegram.setMessageReaction(
+            Config.telegram.group_id,
+            _message.message_telegram,
+            [{ type: "emoji", emoji: "👍" }]
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Something went wrong when fetching the message:", error);
+      // Return as `_message.author` may be undefined/null
+      return;
+    }
+  });
+
+  // ##############################################################################################
+  // MessageCreate
+  // ##############################################################################################
+  discordBot.on(Events.MessageCreate, async (msg) => {
+    if (msg.channelId === Config.discord.channel_id && !msg.author.bot) {
       //console.log("text: ", util.inspect(msg.cleanContent, true, null, true));
       let tg = null;
       if (msg.attachments?.size == 1 && msg.attachments?.every(isImage)) {
@@ -306,7 +321,8 @@ DB.connection.once("open", async () => {
       if (tg) {
         let saved = await new Message({
           _id: new DB.Types.ObjectId(),
-          message_id: Number(msg.id),
+          message_type: "discord",
+          message_discord: Number(msg.id),
           message_telegram: tg.message_id,
           message_time: new Date(msg.createdAt),
         }).save();
@@ -314,7 +330,11 @@ DB.connection.once("open", async () => {
     }
   });
 
+  // ##############################################################################################
+  // InteractionCreate
+  // ##############################################################################################
   discordBot.on(Events.InteractionCreate, async (interaction) => {
+    console.log(`INTERACTION:\n${util.inspect(interaction, true, null, true)}`);
     if (
       !interaction.isChatInputCommand() &&
       !interaction.isButton() &&
@@ -326,16 +346,12 @@ DB.connection.once("open", async () => {
       return;
     }
 
-    //console.log(interaction);
-
     const command = interaction.isChatInputCommand()
       ? interaction.client.commands.get(interaction.commandName)
       : interaction.client.commands.get(interaction.customId.split("_")[0]);
 
     if (!command) {
-      console.error(
-        `No command matching ${interaction.commandName} was found.`
-      );
+      console.error(`No command matching ${interaction.commandName} was found.`);
     } else {
       try {
         await command.execute(discordBot, interaction);
@@ -351,17 +367,24 @@ DB.connection.once("open", async () => {
 
   discordBot.on(Events.ClientReady, async () => {
     console.log(`Discord: Logged in as ${discordBot.user.tag}!`);
-    discordBot.user.setActivity("your mother undress", {
-      type: ActivityType.Watching,
-    });
+    discordBot.user.setActivity(
+      "When he hears the fire bell chime, Fireman Sam is there on time.",
+      {
+        type: ActivityType.Custom,
+      }
+    );
   });
 
-  // *******************************************************************************************************************
+  // ##############################################################################################
   // Run bot
-  // *******************************************************************************************************************
+  // ##############################################################################################
   console.log("Starting...");
-  telegramBot.launch(() => {
+  telegramBot.launch({ allowedUpdates: ["message", "message_reaction"] }, () => {
     console.log(`Telegram: Logged in as ${telegramBot.botInfo.username}!`);
   });
   await discordBot.login(Config.discord.token);
+
+  // Enable graceful stop
+  process.once("SIGINT", () => telegramBot.stop("SIGINT"));
+  process.once("SIGTERM", () => telegramBot.stop("SIGTERM"));
 });

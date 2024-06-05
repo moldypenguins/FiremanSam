@@ -108,7 +108,7 @@ export default {
         });
       }
     } else if (interaction.isStringSelectMenu()) {
-      let _c = client.channels.cache.get(Config.discord.telegram_id);
+      let _c = client.channels.cache.get(Config.discord.channel_id);
 
       let _u = interaction.guild.members.cache.get(
         interaction.customId.split("_")[1]

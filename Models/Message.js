@@ -25,7 +25,8 @@ import mongoose from "mongoose";
 
 let MessageSchema = new mongoose.Schema({
   _id: { type: mongoose.Schema.Types.ObjectId, required: true },
-  message_id: { type: Number, unique: true, required: true },
+  message_type: { type: String, required: true },
+  message_discord: { type: Number, unique: true, required: true },
   message_telegram: { type: Number, unique: true, required: true },
   message_time: { type: Date, required: true },
 });

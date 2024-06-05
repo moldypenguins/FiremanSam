@@ -111,7 +111,7 @@ export default {
         });
       }
     } else if (interaction.isStringSelectMenu()) {
-      let _c = client.channels.cache.get(Config.discord.telegram_id);
+      let _c = client.channels.cache.get(Config.discord.channel_id);
       let _u = interaction.member;
       let _t = await Member.findOne({ member_telegram: interaction.values[0] });
       if (!_t) {
