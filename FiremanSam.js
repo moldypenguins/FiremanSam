@@ -26,7 +26,7 @@ import util from "util";
 import Config from "./config.js";
 import { DB, Guild, Message, Member } from "./db.js";
 
-import { Context, Telegraf } from "telegraf";
+import { Telegraf } from "telegraf";
 
 import {
   ActivityType,
@@ -135,12 +135,46 @@ DB.connection.once("open", async () => {
     }
   };
   */
+  telegramBot.on("message_reaction", async (ctx, next) => {
+    if (ctx.messageReaction?.new_reaction?.length > 0) {
+      let _link = await Message.findOne({
+        message_telegram: ctx.messageReaction.message_id,
+        message_type: "discord",
+      });
+      if (_link) {
+        let _c = discordBot.channels.cache.get(Config.discord.channel_id);
+        let _message = await _c.messages.fetch(_link.message_discord);
+        if (_message) {
+          _message.reply(
+            `${bold(italic(await getTelegramName(ctx.messageReaction.user)))}: ${ctx.messageReaction.new_reaction[0].emoji}`
+          );
+        }
+      }
+    }
+    next();
+  });
+
+  telegramBot.on("edited_message", async (ctx, next) => {
+    if (ctx.editedMessage?.message) {
+      let _link = await Message.findOne({
+        message_telegram: ctx.messageReaction.message_id,
+        message_type: "discord",
+      });
+      if (_link) {
+        let _c = discordBot.channels.cache.get(Config.discord.channel_id);
+        let _message = await _c.messages.fetch(_link.message_discord);
+        if (_message) {
+          _message.reply(
+            `${bold(italic(await getTelegramName(ctx.messageReaction.user)))}: ${ctx.messageReaction.new_reaction[0].emoji}`
+          );
+        }
+      }
+    }
+    next();
+  });
 
   telegramBot.use(async (ctx, next) => {
     //console.log("MSG: ", util.inspect(ctx.message, true, null, true));
-    telegramBot.reaction("👍", (ctx) => {
-      console.log("reaction added"); // only responds to 👍
-    });
     //check for unknown groups
     if (
       ctx.message?.chat?.id == Config.telegram.group_id &&
@@ -148,46 +182,70 @@ DB.connection.once("open", async () => {
       ctx.message?.chat?.type !== "private" &&
       !ctx.message?.entities?.filter((e) => e.type === "bot_command")?.length > 0
     ) {
-      //console.log("OTHER: ", util.inspect(ctx.message.animation, true, null, true));
-      let ds = null;
-      if (ctx.message?.photo?.length > 0) {
-        let picLink = await telegramBot.telegram.getFileLink(ctx.message.photo.pop().file_id);
-        ds = await discordBot.channels.cache?.get(Config.discord.channel_id)?.send({
-          files: [new AttachmentBuilder(picLink.href)],
-          content:
-            `${bold(italic(await getTelegramName(ctx.message.from)))}` +
-            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
-        });
-      } else if (ctx.message?.animation) {
-        let picLink = await telegramBot.telegram.getFileLink(ctx.message.animation.file_id);
-        ds = await discordBot.channels.cache?.get(Config.discord.channel_id)?.send({
-          files: [new AttachmentBuilder(picLink.href)],
-          content:
-            `${bold(italic(await getTelegramName(ctx.message.from)))}` +
-            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
-        });
-      } else if (ctx.message?.document?.mime_type?.toLowerCase().startsWith("image")) {
-        let picLink = await telegramBot.telegram.getFileLink(ctx.message.document.file_id);
-        ds = await discordBot.channels.cache?.get(Config.discord.channel_id)?.send({
-          files: [new AttachmentBuilder(picLink.href)],
-          content:
-            `${bold(italic(await getTelegramName(ctx.message.from)))}` +
-            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
-        });
-      } else {
-        ds = await discordBot.channels.cache?.get(Config.discord.channel_id)?.send({
-          content: `${bold(italic(await getTelegramName(ctx.message.from)))}: ${ctx.message.text}`,
+      //check is update
+      if (ctx.editedMessage?.message) {
+        var a = 1;
+      }
+      //check is reply
+      let _link;
+      if (ctx.update?.message?.reply_to_message) {
+        _link = await Message.findOne({
+          message_telegram: ctx.update.message.reply_to_message.message_id,
+          message_type: "discord",
         });
       }
-
-      if (ds) {
-        let saved = await new Message({
-          _id: new DB.Types.ObjectId(),
-          message_type: "telegram",
-          message_discord: Number(ds.id),
-          message_telegram: ctx.message.message_id,
-          message_time: new Date(ctx.message.date),
-        }).save();
+      let _c = discordBot.channels.cache.get(Config.discord.channel_id);
+      let _content;
+      if (ctx.message?.photo?.length > 0) {
+        let picLink = await telegramBot.telegram.getFileLink(ctx.message.photo.pop().file_id);
+        _content = {
+          files: [new AttachmentBuilder(picLink.href)],
+          content:
+            `${bold(italic(await getTelegramName(ctx.message.from)))}` +
+            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+        };
+      } else if (ctx.message?.animation) {
+        let picLink = await telegramBot.telegram.getFileLink(ctx.message.animation.file_id);
+        _content = {
+          files: [new AttachmentBuilder(picLink.href)],
+          content:
+            `${bold(italic(await getTelegramName(ctx.message.from)))}` +
+            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+        };
+      } else if (ctx.message?.document?.mime_type?.toLowerCase().startsWith("image")) {
+        let picLink = await telegramBot.telegram.getFileLink(ctx.message.document.file_id);
+        _content = {
+          files: [new AttachmentBuilder(picLink.href)],
+          content:
+            `${bold(italic(await getTelegramName(ctx.message.from)))}` +
+            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+        };
+      } else {
+        _content = {
+          content: `${bold(italic(await getTelegramName(ctx.message.from)))}: ${ctx.message.text}`,
+        };
+      }
+      if (_content) {
+        let _sent;
+        if (_link) {
+          //reply
+          let _message = await _c.messages.fetch(_link.message_discord);
+          if (_message) {
+            _sent = await _message.reply(_content);
+          }
+        } else {
+          //message
+          _sent = await _c.send(_content);
+        }
+        if (_sent) {
+          await new Message({
+            _id: new DB.Types.ObjectId(),
+            message_type: "telegram",
+            message_discord: _sent.id,
+            message_telegram: ctx.message.message_id,
+            message_time: new Date(ctx.message.date),
+          }).save();
+        }
       }
     }
     next();
@@ -207,7 +265,7 @@ DB.connection.once("open", async () => {
   });
 
   telegramBot.catch(async (err, ctx) => {
-    console.log(`Ooops, encountered an error for ${ctx.updateType}`, err);
+    console.log(`Ooops, encountered an error for ${ctx.updateType}\n`, err);
   });
 
   // ##############################################################################################
@@ -273,23 +331,16 @@ DB.connection.once("open", async () => {
       }
       let _message = await Message.findOne({
         message_discord: reaction.message.id,
+        message_type: "telegram",
       });
       if (_message) {
-        console.log(`"${_message.id}": ${reaction.emoji.name} from ${user.tag}`);
-
-        if (Config.telegram.emojis.includes(reaction.emoji.name)) {
-          await telegramBot.telegram.setMessageReaction(
-            Config.telegram.group_id,
-            _message.message_telegram,
-            [{ type: "emoji", emoji: "👍" }]
-          );
-
-          await telegramBot.telegram.reply(
-            Config.telegram.group_id,
-            `<b><i>${msg.member.nickname}</i></b>: ${msg.cleanContent}`,
-            { parse_mode: "HTML" }
-          );
-        }
+        let _member = reaction.message.guild.members.cache.get(user.id);
+        //console.log(`"${reaction.emoji.name} from ${_member.nickname}`);
+        await telegramBot.telegram.sendMessage(
+          Config.telegram.group_id,
+          `<b><i>${_member.nickname}</i></b>: ${reaction.emoji.name}`,
+          { reply_to_message_id: _message.message_telegram, parse_mode: "HTML" }
+        );
       }
     } catch (error) {
       console.error("Something went wrong when fetching the message:", error);
@@ -300,47 +351,82 @@ DB.connection.once("open", async () => {
   // ##############################################################################################
   // Discord MessageCreate
   // ##############################################################################################
-  discordBot.on(Events.MessageCreate, async (msg) => {
-    if (msg.channelId === Config.discord.channel_id && !msg.author.bot) {
+  discordBot.on(Events.MessageCreate, async (message) => {
+    if (message.channelId === Config.discord.channel_id && !message.author.bot) {
       //console.log("text: ", util.inspect(msg.cleanContent, true, null, true));
-      let tg = null;
-      if (msg.attachments?.size == 1 && msg.attachments?.every(isImage)) {
-        tg = await telegramBot.telegram.sendPhoto(
+      let _link;
+      if (message.reference?.messageId) {
+        _link = await Message.findOne({
+          message_discord: message.reference.messageId,
+          message_type: "telegram",
+        });
+      }
+      let _response;
+      if (message.attachments?.size == 1 && message.attachments?.every(isImage)) {
+        _response = await telegramBot.telegram.sendPhoto(
           Config.telegram.group_id,
-          msg.attachments.first().url,
+          message.attachments.first().url,
           {
             caption:
-              `<b><i>${msg.member.nickname}</i></b>` +
-              (msg.content.length <= 0 ? "" : `: ${msg.cleanContent}`),
+              `<b><i>${message.member.nickname}</i></b>` +
+              (message.content.length <= 0 ? "" : `: ${message.cleanContent}`),
             parse_mode: "HTML",
+            reply_to_message_id: _link ? _link.message_telegram : undefined,
           }
         );
-      } else if (msg.attachments?.size > 1 && msg.attachments?.every(isImage)) {
-        tg = await telegramBot.telegram.sendMediaGroup(
+      } else if (message.attachments?.size > 1 && message.attachments?.every(isImage)) {
+        //TODO: test functionality
+        _response = await telegramBot.telegram.sendMediaGroup(
           Config.telegram.group_id,
-          msg.attachments.map((att) => {
-            return {
-              media: att.url,
-              caption: att.caption,
-              type: "photo",
-            };
-          })
+          message.attachments.map(
+            (att) => {
+              return {
+                media: att.url,
+                caption: att.caption,
+                type: "photo",
+              };
+            },
+            { parse_mode: "HTML", reply_to_message_id: _link ? _link.message_telegram : undefined }
+          )
         );
       } else {
-        tg = await telegramBot.telegram.sendMessage(
+        _response = await telegramBot.telegram.sendMessage(
           Config.telegram.group_id,
-          `<b><i>${msg.member.nickname}</i></b>: ${msg.cleanContent}`,
-          { parse_mode: "HTML" }
+          `<b><i>${message.member.nickname}</i></b>: ${message.cleanContent}`,
+          { parse_mode: "HTML", reply_to_message_id: _link ? _link.message_telegram : undefined }
         );
       }
-      if (tg) {
-        let saved = await new Message({
+      if (_response) {
+        await new Message({
           _id: new DB.Types.ObjectId(),
           message_type: "discord",
-          message_discord: Number(msg.id),
-          message_telegram: tg.message_id,
-          message_time: new Date(msg.createdAt),
+          message_discord: message.id,
+          message_telegram: _response.message_id,
+          message_time: new Date(message.createdAt),
         }).save();
+      }
+    }
+  });
+
+  // ##############################################################################################
+  // Discord MessageUpdate
+  // ##############################################################################################
+  discordBot.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
+    if (newMessage.channelId === Config.discord.channel_id && !newMessage.author.bot) {
+      if (oldMessage.id) {
+        let _link = await Message.findOne({
+          message_discord: oldMessage.id,
+          message_type: "discord",
+        });
+        if (_link) {
+          await telegramBot.telegram.editMessageText(
+            Config.telegram.group_id,
+            Number(_link.message_telegram),
+            undefined,
+            `<b><i>${newMessage.member.nickname}</i></b>: ${newMessage.cleanContent}`,
+            { parse_mode: "HTML" }
+          );
+        }
       }
     }
   });
