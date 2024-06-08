@@ -196,7 +196,7 @@ DB.connection.once("open", async () => {
           files: [new AttachmentBuilder(picLink.href)],
           content:
             `${bold(italic(await getTelegramName(ctx.message.from)))}` +
-            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+            (ctx.message.caption?.length > 0 ? `: ${ctx.message.caption}` : ""),
         };
       } else if (ctx.has(message("animation"))) {
         let picLink = await telegramBot.telegram.getFileLink(ctx.message.animation.file_id);
@@ -204,15 +204,13 @@ DB.connection.once("open", async () => {
           files: [new AttachmentBuilder(picLink.href)],
           content:
             `${bold(italic(await getTelegramName(ctx.message.from)))}` +
-            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+            (ctx.message.caption?.length > 0 ? `: ${ctx.message.caption}` : ""),
         };
       } else if (ctx.has(message("sticker"))) {
         let picLink = await telegramBot.telegram.getFileLink(ctx.message.sticker.file_id);
         _content = {
           files: [new AttachmentBuilder(picLink.href)],
-          content:
-            `${bold(italic(await getTelegramName(ctx.message.from)))}` +
-            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+          content: `${bold(italic(await getTelegramName(ctx.message.from)))}`,
         };
       } else if (ctx.has(message("video"))) {
         let vidLink = await telegramBot.telegram.getFileLink(ctx.message.video.file_id);
@@ -220,7 +218,7 @@ DB.connection.once("open", async () => {
           files: [new AttachmentBuilder(vidLink.href)],
           content:
             `${bold(italic(await getTelegramName(ctx.message.from)))}` +
-            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+            (ctx.message.caption?.length > 0 ? `: ${ctx.message.caption}` : ""),
         };
       } else if (ctx.has(message("document"))) {
         if (ctx.message.document.mime_type.toLowerCase().startsWith("image")) {
@@ -229,7 +227,7 @@ DB.connection.once("open", async () => {
             files: [new AttachmentBuilder(docLink.href)],
             content:
               `${bold(italic(await getTelegramName(ctx.message.from)))}` +
-              (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+              (ctx.message.caption?.length > 0 ? `: ${ctx.message.caption}` : ""),
           };
         }
       } else if (ctx.has(message("text"))) {
@@ -382,22 +380,28 @@ DB.connection.once("open", async () => {
             caption:
               `<b><i>${message.member.nickname}</i></b>` +
               (message.content.length <= 0 ? "" : `: ${message.cleanContent}`),
+            show_caption_above_media: true,
             parse_mode: "HTML",
             reply_to_message_id: _link ? _link.message_telegram : undefined,
           }
         );
       } else if (message.attachments?.size == 1 && message.attachments?.every(isImage)) {
-        _response = await telegramBot.telegram.sendPhoto(
-          Config.telegram.group_id,
-          message.attachments.first().url,
-          {
-            caption:
-              `<b><i>${message.member.nickname}</i></b>` +
-              (message.content.length <= 0 ? "" : `: ${message.cleanContent}`),
-            parse_mode: "HTML",
-            reply_to_message_id: _link ? _link.message_telegram : undefined,
-          }
-        );
+        try {
+          _response = await telegramBot.telegram.sendPhoto(
+            Config.telegram.group_id,
+            message.attachments.first().url,
+            {
+              caption:
+                `<b><i>${message.member.nickname}</i></b>` +
+                (message.content.length <= 0 ? "" : `: ${message.cleanContent}`),
+              show_caption_above_media: "True",
+              parse_mode: "HTML",
+              reply_to_message_id: _link ? _link.message_telegram : undefined,
+            }
+          );
+        } catch (err) {
+          console.log(`Error sending photo.\n${err}`);
+        }
       } else if (message.attachments?.size > 1 && message.attachments?.every(isImage)) {
         //TODO: test functionality
         _response = await telegramBot.telegram.sendMediaGroup(
@@ -414,11 +418,15 @@ DB.connection.once("open", async () => {
           )
         );
       } else {
-        _response = await telegramBot.telegram.sendMessage(
-          Config.telegram.group_id,
-          `<b><i>${message.member.nickname}</i></b>: ${message.cleanContent}`,
-          { parse_mode: "HTML", reply_to_message_id: _link ? _link.message_telegram : undefined }
-        );
+        try {
+          _response = await telegramBot.telegram.sendMessage(
+            Config.telegram.group_id,
+            `<b><i>${message.member.nickname}</i></b>: /${message.cleanContent}`,
+            { parse_mode: "HTML", reply_to_message_id: _link ? _link.message_telegram : undefined }
+          );
+        } catch (err) {
+          console.log(`Error sending message.\n${err}`);
+        }
       }
       if (_response) {
         await new Message({
@@ -491,7 +499,7 @@ DB.connection.once("open", async () => {
   });
 
   discordBot.on(Events.ClientReady, async () => {
-    console.log(`Discord: Logged in as ${discordBot.user.tag}!`);
+    console.log(`DiscordBot: Logged in as ${discordBot.user.tag}!`);
     discordBot.user.setActivity(
       "When he hears the fire bell chime, Fireman Sam is there on time.",
       {
@@ -500,20 +508,32 @@ DB.connection.once("open", async () => {
     );
   });
 
+  //TODO: add more error handling here
+  discordBot.on(Events.ShardError, (err) => {
+    console.error(`DiscordBot (ShardError):\n${err}`);
+  });
+  discordBot.on(Events.Error, (err) => {
+    console.error(`DiscordBot (Error):\n${err}`);
+  });
+
   // ##############################################################################################
   // Run bots
   // ##############################################################################################
   console.log("Starting...");
   telegramBot
     .launch({ allowedUpdates: ["message", "message_reaction", "edited_message"] }, () => {
-      console.log(`Telegram: Logged in as ${telegramBot.botInfo.username}!`);
+      console.log(`TelegramBot: Logged in as ${telegramBot.botInfo.username}!`);
     })
-    .catch((err) => {
+    .catch(async (err) => {
       // polling has errored
       console.log("Ooops, polling has errored\n", err);
+      await gracefulShutdown("SIGTERM");
     });
   await discordBot.login(Config.discord.token);
 
+  process.on("unhandledRejection", (err) => {
+    console.error("Unhandled promise rejection:", err);
+  });
   // ##############################################################################################
   // Graceful Shutdown
   // ##############################################################################################
