@@ -27,6 +27,7 @@ import Config from "./config.js";
 import { DB, Guild, Message, Member } from "./db.js";
 
 import { Telegraf } from "telegraf";
+import { message, editedMessage } from "telegraf/filters";
 
 import {
   ActivityType,
@@ -109,10 +110,7 @@ DB.connection.once("open", async () => {
   // ##############################################################################################
   // Telegram
   // ##############################################################################################
-  const telegramBot = new Telegraf(Config.telegram.token, {
-    telegram: { agent: null, webhookReply: false },
-    username: Config.telegram.username,
-  });
+  const telegramBot = new Telegraf(Config.telegram.token);
 
   /*
   telegramBot.context.mentions = {
@@ -135,7 +133,8 @@ DB.connection.once("open", async () => {
     }
   };
   */
-  telegramBot.on("message_reaction", async (ctx, next) => {
+
+  telegramBot.on("message_reaction", async (ctx) => {
     if (ctx.messageReaction?.new_reaction?.length > 0) {
       let _link = await Message.findOne({
         message_telegram: ctx.messageReaction.message_id,
@@ -151,26 +150,25 @@ DB.connection.once("open", async () => {
         }
       }
     }
-    next();
   });
 
-  telegramBot.on("edited_message", async (ctx, next) => {
-    if (ctx.editedMessage?.message) {
+  telegramBot.on(editedMessage("text"), async (ctx) => {
+    //TODO: test messages with images, etc.
+    if (ctx.editedMessage?.text) {
       let _link = await Message.findOne({
-        message_telegram: ctx.messageReaction.message_id,
-        message_type: "discord",
+        message_telegram: ctx.editedMessage.message_id,
+        message_type: "telegram",
       });
       if (_link) {
         let _c = discordBot.channels.cache.get(Config.discord.channel_id);
         let _message = await _c.messages.fetch(_link.message_discord);
         if (_message) {
-          _message.reply(
-            `${bold(italic(await getTelegramName(ctx.messageReaction.user)))}: ${ctx.messageReaction.new_reaction[0].emoji}`
+          _message.edit(
+            `${bold(italic(await getTelegramName(ctx.editedMessage.from)))}: ${ctx.editedMessage.text}`
           );
         }
       }
     }
-    next();
   });
 
   telegramBot.use(async (ctx, next) => {
@@ -182,13 +180,9 @@ DB.connection.once("open", async () => {
       ctx.message?.chat?.type !== "private" &&
       !ctx.message?.entities?.filter((e) => e.type === "bot_command")?.length > 0
     ) {
-      //check is update
-      if (ctx.editedMessage?.message) {
-        var a = 1;
-      }
       //check is reply
       let _link;
-      if (ctx.update?.message?.reply_to_message) {
+      if (ctx.has(message("reply_to_message"))) {
         _link = await Message.findOne({
           message_telegram: ctx.update.message.reply_to_message.message_id,
           message_type: "discord",
@@ -196,7 +190,7 @@ DB.connection.once("open", async () => {
       }
       let _c = discordBot.channels.cache.get(Config.discord.channel_id);
       let _content;
-      if (ctx.message?.photo?.length > 0) {
+      if (ctx.has(message("photo"))) {
         let picLink = await telegramBot.telegram.getFileLink(ctx.message.photo.pop().file_id);
         _content = {
           files: [new AttachmentBuilder(picLink.href)],
@@ -204,7 +198,7 @@ DB.connection.once("open", async () => {
             `${bold(italic(await getTelegramName(ctx.message.from)))}` +
             (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
         };
-      } else if (ctx.message?.animation) {
+      } else if (ctx.has(message("animation"))) {
         let picLink = await telegramBot.telegram.getFileLink(ctx.message.animation.file_id);
         _content = {
           files: [new AttachmentBuilder(picLink.href)],
@@ -212,15 +206,33 @@ DB.connection.once("open", async () => {
             `${bold(italic(await getTelegramName(ctx.message.from)))}` +
             (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
         };
-      } else if (ctx.message?.document?.mime_type?.toLowerCase().startsWith("image")) {
-        let picLink = await telegramBot.telegram.getFileLink(ctx.message.document.file_id);
+      } else if (ctx.has(message("sticker"))) {
+        let picLink = await telegramBot.telegram.getFileLink(ctx.message.sticker.file_id);
         _content = {
           files: [new AttachmentBuilder(picLink.href)],
           content:
             `${bold(italic(await getTelegramName(ctx.message.from)))}` +
             (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
         };
-      } else {
+      } else if (ctx.has(message("video"))) {
+        let vidLink = await telegramBot.telegram.getFileLink(ctx.message.video.file_id);
+        _content = {
+          files: [new AttachmentBuilder(vidLink.href)],
+          content:
+            `${bold(italic(await getTelegramName(ctx.message.from)))}` +
+            (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+        };
+      } else if (ctx.has(message("document"))) {
+        if (ctx.message.document.mime_type.toLowerCase().startsWith("image")) {
+          let docLink = await telegramBot.telegram.getFileLink(ctx.message.document.file_id);
+          _content = {
+            files: [new AttachmentBuilder(docLink.href)],
+            content:
+              `${bold(italic(await getTelegramName(ctx.message.from)))}` +
+              (ctx.message.text?.length > 0 ? `: ${ctx.message.text}` : ""),
+          };
+        }
+      } else if (ctx.has(message("text"))) {
         _content = {
           content: `${bold(italic(await getTelegramName(ctx.message.from)))}: ${ctx.message.text}`,
         };
@@ -248,7 +260,7 @@ DB.connection.once("open", async () => {
         }
       }
     }
-    next();
+    await next();
   });
 
   telegramBot.start(async (ctx) => {
@@ -362,7 +374,19 @@ DB.connection.once("open", async () => {
         });
       }
       let _response;
-      if (message.attachments?.size == 1 && message.attachments?.every(isImage)) {
+      if (message.stickers?.size >= 1) {
+        _response = await telegramBot.telegram.sendPhoto(
+          Config.telegram.group_id,
+          message.stickers.first().url.replace("cdn.discordapp.com", "media.discordapp.net"),
+          {
+            caption:
+              `<b><i>${message.member.nickname}</i></b>` +
+              (message.content.length <= 0 ? "" : `: ${message.cleanContent}`),
+            parse_mode: "HTML",
+            reply_to_message_id: _link ? _link.message_telegram : undefined,
+          }
+        );
+      } else if (message.attachments?.size == 1 && message.attachments?.every(isImage)) {
         _response = await telegramBot.telegram.sendPhoto(
           Config.telegram.group_id,
           message.attachments.first().url,
@@ -480,9 +504,14 @@ DB.connection.once("open", async () => {
   // Run bots
   // ##############################################################################################
   console.log("Starting...");
-  telegramBot.launch({ allowedUpdates: ["message", "message_reaction"] }, () => {
-    console.log(`Telegram: Logged in as ${telegramBot.botInfo.username}!`);
-  });
+  telegramBot
+    .launch({ allowedUpdates: ["message", "message_reaction", "edited_message"] }, () => {
+      console.log(`Telegram: Logged in as ${telegramBot.botInfo.username}!`);
+    })
+    .catch((err) => {
+      // polling has errored
+      console.log("Ooops, polling has errored\n", err);
+    });
   await discordBot.login(Config.discord.token);
 
   // ##############################################################################################
