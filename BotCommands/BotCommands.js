@@ -21,12 +21,12 @@
  * @summary bot commands
  **/
 
+import admin from "./admin.js";
 import link from "./link.js";
-import linkuser from "./linkuser.js";
 
 let BotCommands = {
+  admin,
   link,
-  linkuser,
 };
 
 export default BotCommands;

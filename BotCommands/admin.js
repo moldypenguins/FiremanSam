@@ -49,30 +49,36 @@ dayjs.extend(timezone);
 
 export default {
   data: new SlashCommandBuilder()
-    .setName("linkuser")
-    .setDescription("Link Discord User to Telegram user.")
-    .addUserOption((option) =>
-      option
-        .setName("user")
-        .setDescription("The Discord user to set.")
-        .setRequired(true)
-    )
+    .setName("admin")
+    .setDescription("Administrator commands.")
     .setDMPermission(false)
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("link")
+        .setDescription("Link Discord User to Telegram user.")
+        .addUserOption((option) =>
+          option.setName("user").setDescription("The Discord user to set.").setRequired(true)
+        )
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("unlink")
+        .setDescription("Unlink Discord User to Telegram user.")
+        .addUserOption((option) =>
+          option.setName("user").setDescription("The Discord user to unset.").setRequired(true)
+        )
+    ),
 
   async execute(client, interaction) {
     //console.log(`INTERACTION: ${util.inspect(interaction, true, 1, true)}`);
-    if (
-      !interaction.member.permissions.has(PermissionFlagsBits.Administrator)
-    ) {
+    if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
       interaction.reply({
         embeds: [
           {
             color: 0xff0000,
             title: "Error",
-            description: bold(
-              "You do not have the required permissions to use this command."
-            ),
+            description: bold("You do not have the required permissions to use this command."),
           },
         ],
         ephemeral: true,
@@ -110,9 +116,7 @@ export default {
     } else if (interaction.isStringSelectMenu()) {
       let _c = client.channels.cache.get(Config.discord.channel_id);
 
-      let _u = interaction.guild.members.cache.get(
-        interaction.customId.split("_")[1]
-      );
+      let _u = interaction.guild.members.cache.get(interaction.customId.split("_")[1]);
 
       let _t = await Member.findOne({ member_telegram: interaction.values[0] });
       if (!_t) {
@@ -121,9 +125,7 @@ export default {
             {
               color: 0xff0000,
               title: "Error",
-              description: bold(
-                "You must first use the /start command in Telegram."
-              ),
+              description: bold("You must first use the /start command in Telegram."),
             },
           ],
           ephemeral: true,
