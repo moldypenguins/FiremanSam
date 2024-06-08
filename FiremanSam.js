@@ -274,6 +274,10 @@ DB.connection.once("open", async () => {
     }
   });
 
+  telegramBot.help(async (ctx) => {
+    ctx.replyWithHTML("🎶 <i>When he hears the fire bell chime, Fireman Sam is there on time.</i>");
+  });
+
   telegramBot.catch(async (err, ctx) => {
     console.log(`Ooops, encountered an error for ${ctx.updateType}\n`, err);
   });
@@ -419,9 +423,10 @@ DB.connection.once("open", async () => {
         );
       } else {
         try {
+          //TODO: handle cleanContent starting with /
           _response = await telegramBot.telegram.sendMessage(
             Config.telegram.group_id,
-            `<b><i>${message.member.nickname}</i></b>: /${message.cleanContent}`,
+            `<b><i>${message.member.nickname}</i></b>: ${message.cleanContent.replace(/(\W)\/(\w+[^.]+)/gi, "$1$2")}`,
             { parse_mode: "HTML", reply_to_message_id: _link ? _link.message_telegram : undefined }
           );
         } catch (err) {
