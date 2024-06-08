@@ -426,7 +426,7 @@ DB.connection.once("open", async () => {
           //TODO: handle cleanContent starting with /
           _response = await telegramBot.telegram.sendMessage(
             Config.telegram.group_id,
-            `<b><i>${message.member.nickname}</i></b>: ${message.cleanContent.replace(/(\W)\/(\w+[^.]+)/gi, "$1$2")}`,
+            `<b><i>${message.member.nickname}</i></b>: ${message.cleanContent.replace(/(\W)\/(\w+[^./]+)/gi, "$1$2")}`,
             { parse_mode: "HTML", reply_to_message_id: _link ? _link.message_telegram : undefined }
           );
         } catch (err) {
