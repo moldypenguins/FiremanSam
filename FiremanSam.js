@@ -153,7 +153,6 @@ DB.connection.once("open", async () => {
   });
 
   telegramBot.on(editedMessage("text"), async (ctx) => {
-    //TODO: test messages with images, etc.
     if (ctx.editedMessage?.text) {
       let _link = await Message.findOne({
         message_telegram: ctx.editedMessage.message_id,
@@ -422,16 +421,15 @@ DB.connection.once("open", async () => {
           )
         );
       } else {
-        try {
-          //TODO: handle cleanContent starting with /
-          _response = await telegramBot.telegram.sendMessage(
+        _response = await telegramBot.telegram
+          .sendMessage(
             Config.telegram.group_id,
             `<b><i>${message.member.nickname}</i></b>: ${message.cleanContent.replace(/([^\w/]+)\/(\w+[^./]+)/gi, "$1$2")}`,
             { parse_mode: "HTML", reply_to_message_id: _link ? _link.message_telegram : undefined }
-          );
-        } catch (err) {
-          console.log(`Error sending message.\n${err}`);
-        }
+          )
+          .catch((err) => {
+            console.log(`Error sending message.\n${err}`);
+          });
       }
       if (_response) {
         await new Message({
@@ -513,7 +511,6 @@ DB.connection.once("open", async () => {
     );
   });
 
-  //TODO: add more error handling here
   discordBot.on(Events.ShardError, (err) => {
     console.error(`DiscordBot (ShardError):\n${err}`);
   });

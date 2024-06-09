@@ -25,9 +25,9 @@ import mongoose from "mongoose";
 
 let MemberSchema = new mongoose.Schema({
   _id: { type: mongoose.Schema.Types.ObjectId, required: true },
-  member_id: { type: String },
-  member_nickname: { type: String, unique: true, required: true },
   member_telegram: { type: String, unique: true, required: true },
+  member_nickname: { type: String, unique: true, required: true },
+  member_discord: { type: String },
 });
 
 MemberSchema.index({ member_id: 1 }, { unique: true, sparse: true });

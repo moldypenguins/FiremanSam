@@ -87,37 +87,66 @@ export default {
     }
 
     if (interaction.isChatInputCommand()) {
-      let _u = interaction.options.getUser("user");
+      let _user = interaction.options.getUser("user");
+      let _subcommand = interaction.options._subcommand;
 
-      let _m = await Member.find({});
-      if (_m?.length > 0) {
-        let _options = _m.map((o) => {
-          return { label: o.member_nickname, value: o.member_telegram };
-        });
+      if (_subcommand == "link") {
+        let _m = await Member.find({});
+        if (_m?.length > 0) {
+          let _options = _m.map((o) => {
+            return { label: o.member_nickname, value: o.member_telegram };
+          });
 
-        let optionsSelect = new StringSelectMenuBuilder()
-          .setCustomId(`linkuser_${_u.id}`)
-          .setPlaceholder(" Options")
-          .setMinValues(1)
-          .setMaxValues(1)
-          .addOptions(..._options);
+          let optionsSelect = new StringSelectMenuBuilder()
+            .setCustomId(`linkuser_${_user.id}`)
+            .setPlaceholder(" Options")
+            .setMinValues(1)
+            .setMaxValues(1)
+            .addOptions(..._options);
 
-        interaction.reply({
-          embeds: [
-            {
-              color: 0xff0000,
-              title: "Choose Telegram user",
-            },
-          ],
-          components: [new ActionRowBuilder().addComponents(optionsSelect)],
-          ephemeral: false,
-        });
+          interaction.reply({
+            embeds: [
+              {
+                color: 0xff0000,
+                title: "Choose Telegram user",
+              },
+            ],
+            components: [new ActionRowBuilder().addComponents(optionsSelect)],
+            ephemeral: false,
+          });
+        }
+      } else if (_subcommand == "unlink") {
+        let _t = await Member.findOneAndUpdate(
+          { member_telegram: _user.id },
+          { member_discord: undefined }
+        );
+        if (!_t) {
+          await client.channels.cache.get(Config.discord.channel_id).send({
+            embeds: [
+              {
+                color: 0xff0000,
+                title: "Error",
+                description: bold("Error while trying to unlink user."),
+              },
+            ],
+            ephemeral: true,
+          });
+        } else {
+          await client.channels.cache.get(Config.discord.channel_id).send({
+            embeds: [
+              {
+                color: 0xff0000,
+                title: "Success",
+                description: bold("User unlinked."),
+              },
+            ],
+            ephemeral: true,
+          });
+        }
       }
     } else if (interaction.isStringSelectMenu()) {
       let _c = client.channels.cache.get(Config.discord.channel_id);
-
       let _u = interaction.guild.members.cache.get(interaction.customId.split("_")[1]);
-
       let _t = await Member.findOne({ member_telegram: interaction.values[0] });
       if (!_t) {
         await _c.send({
@@ -125,13 +154,13 @@ export default {
             {
               color: 0xff0000,
               title: "Error",
-              description: bold("You must first use the /start command in Telegram."),
+              description: bold("The user must first use the /start command in Telegram."),
             },
           ],
           ephemeral: true,
         });
       } else {
-        _t.member_id = _u.id;
+        _t.member_discord = _u.id;
         _t.member_nickname = _u.nickname;
         await _t.save();
 
@@ -143,7 +172,7 @@ export default {
               fields: [
                 {
                   name: "",
-                  value: `${_t.member_id} linked to ${_t.member_telegram}`,
+                  value: `${_t.member_discord} linked to ${_t.member_telegram}`,
                   inline: false,
                 },
               ],

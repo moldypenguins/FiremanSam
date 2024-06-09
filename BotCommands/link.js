@@ -62,9 +62,7 @@ export default {
           {
             color: 0xff0000,
             title: "Error",
-            description: bold(
-              "You do not have the required permissions to use this command."
-            ),
+            description: bold("You do not have the required permissions to use this command."),
           },
         ],
         ephemeral: true,
@@ -73,7 +71,7 @@ export default {
     }
 
     if (interaction.isChatInputCommand()) {
-      let _m = await Member.find({ member_id: null });
+      let _m = await Member.find({ member_discord: null });
       if (_m?.length > 0) {
         let _options = _m.map((o) => {
           return { label: o.member_nickname, value: o.member_telegram };
@@ -102,9 +100,7 @@ export default {
             {
               color: 0xff0000,
               title: "Error",
-              description: bold(
-                "There are no available Telegram users to link to."
-              ),
+              description: bold("There are no available Telegram users to link to."),
             },
           ],
           ephemeral: true,
@@ -120,15 +116,13 @@ export default {
             {
               color: 0xff0000,
               title: "Error",
-              description: bold(
-                "You must first use the /start command in Telegram."
-              ),
+              description: bold("You must first use the /start command in Telegram."),
             },
           ],
           ephemeral: true,
         });
       } else {
-        _t.member_id = _u.id;
+        _t.member_discord = _u.id;
         _t.member_nickname = _u.nickname;
         await _t.save();
 
@@ -140,7 +134,7 @@ export default {
               fields: [
                 {
                   name: "",
-                  value: `${_t.member_id} linked to ${_t.member_telegram}`,
+                  value: `${_t.member_discord} linked to ${_t.member_telegram}`,
                   inline: false,
                 },
               ],
