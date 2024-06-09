@@ -112,28 +112,6 @@ DB.connection.once("open", async () => {
   // ##############################################################################################
   const telegramBot = new Telegraf(Config.telegram.token);
 
-  /*
-  telegramBot.context.mentions = {
-    get: async (message) => {
-      let mentions = [];
-      if(message.entities !== undefined) {
-        let eMentions = message.entities.filter(e => e.type === "mention");
-        for (let i = 0; i < eMentions.length; i++) {
-          //console.log(`EMENT: ${util.inspect(eMentions[i], true, null, true)}`);
-          let usrnm = message.text.slice(eMentions[i].offset, eMentions[i].offset + eMentions[i].length);
-          //console.log('usrnm: ' + util.inspect(usrnm, false, null, true));
-          mentions.push(eMentions[i]);
-        }
-        let etMentions = message.entities.filter(e => e.type === "text_mention");
-        for (let i = 0; i < etMentions.length; i++) {
-          mentions.push(etMentions[i]);
-        }
-      }
-      return mentions;
-    }
-  };
-  */
-
   telegramBot.on("message_reaction", async (ctx) => {
     if (ctx.messageReaction?.new_reaction?.length > 0) {
       let _link = await Message.findOne({
@@ -207,10 +185,16 @@ DB.connection.once("open", async () => {
         };
       } else if (ctx.has(message("sticker"))) {
         let picLink = await telegramBot.telegram.getFileLink(ctx.message.sticker.file_id);
-        _content = {
-          files: [new AttachmentBuilder(picLink.href)],
-          content: `${bold(italic(await getTelegramName(ctx.message.from)))}`,
-        };
+        if (picLink.pathname.endsWith(".tgs")) {
+          _content = {
+            content: `${bold(italic(await getTelegramName(ctx.message.from)))}: ${ctx.message.sticker.emoji}`,
+          };
+        } else {
+          _content = {
+            files: [new AttachmentBuilder(picLink.href)],
+            content: `${bold(italic(await getTelegramName(ctx.message.from)))}`,
+          };
+        }
       } else if (ctx.has(message("video"))) {
         let vidLink = await telegramBot.telegram.getFileLink(ctx.message.video.file_id);
         _content = {
