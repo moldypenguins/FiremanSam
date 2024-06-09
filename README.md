@@ -32,6 +32,6 @@ _**Craig Roberts**_
 
 ## Licenses
 
-Copyright © 2023 Fireman Sam
-Licensed under the GNU General Public License Version 3
+Copyright © 2023 Fireman Sam  
+Licensed under the GNU General Public License Version 3  
 See [LICENSE.md](LICENSE.md) or [https://www.gnu.org/licenses/gpl-3.0.html](https://www.gnu.org/licenses/gpl-3.0.html) for more details
